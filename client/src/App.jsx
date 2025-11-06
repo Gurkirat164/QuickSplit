@@ -48,28 +48,54 @@ function App() {
         <Toaster
           position="top-right"
           reverseOrder={false}
+          gutter={12}
           toastOptions={{
             // Default options
-            duration: 3000,
+            duration: 4000,
             style: {
-              background: '#1f2937',
-              color: '#fff',
-              border: '1px solid #14b8a6',
+              borderRadius: '12px',
+              padding: '16px 20px',
+              fontSize: '14px',
+              fontWeight: '500',
+              maxWidth: '500px',
+              boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
             },
-            // Success
+            // Success toast
             success: {
               duration: 3000,
+              style: {
+                background: '#d1fae5',
+                color: '#065f46',
+                border: '2px solid #34d399',
+              },
               iconTheme: {
-                primary: '#14b8a6',
-                secondary: '#fff',
+                primary: '#10b981',
+                secondary: '#ffffff',
               },
             },
-            // Error
+            // Error toast
             error: {
               duration: 4000,
+              style: {
+                background: '#fee2e2',
+                color: '#7f1d1d',
+                border: '2px solid #f87171',
+              },
               iconTheme: {
                 primary: '#ef4444',
-                secondary: '#fff',
+                secondary: '#ffffff',
+              },
+            },
+            // Loading toast
+            loading: {
+              style: {
+                background: '#dbeafe',
+                color: '#1e3a8a',
+                border: '2px solid #60a5fa',
+              },
+              iconTheme: {
+                primary: '#3b82f6',
+                secondary: '#ffffff',
               },
             },
           }}
