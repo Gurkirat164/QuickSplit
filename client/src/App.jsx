@@ -22,6 +22,7 @@ import Settings from './pages/Settings';
 import CreateGroupModal from './components/CreateGroupModal';
 import AddExpenseModal from './components/AddExpenseModal';
 import AddMemberModal from './components/AddMemberModal';
+import SettleUpModal from './components/SettleUpModal';
 
 import './index.css';
 
@@ -124,6 +125,7 @@ function App() {
         <CreateGroupModal />
         <AddExpenseModal />
         <AddMemberModal />
+        <SettleUpModal />
       </div>
     </Router>
   );
