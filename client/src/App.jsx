@@ -1,6 +1,7 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
+import { Toaster } from 'react-hot-toast';
 import { fetchCurrentUser } from './store/slices/authSlice';
 import { fetchGroups } from './store/slices/groupSlice';
 
@@ -43,6 +44,37 @@ function App() {
   return (
     <Router>
       <div className="App">
+        {/* Toast Notifications */}
+        <Toaster
+          position="top-right"
+          reverseOrder={false}
+          toastOptions={{
+            // Default options
+            duration: 3000,
+            style: {
+              background: '#1f2937',
+              color: '#fff',
+              border: '1px solid #14b8a6',
+            },
+            // Success
+            success: {
+              duration: 3000,
+              iconTheme: {
+                primary: '#14b8a6',
+                secondary: '#fff',
+              },
+            },
+            // Error
+            error: {
+              duration: 4000,
+              iconTheme: {
+                primary: '#ef4444',
+                secondary: '#fff',
+              },
+            },
+          }}
+        />
+
         <Routes>
           {/* Public Routes */}
           <Route path="/login" element={<Login />} />
