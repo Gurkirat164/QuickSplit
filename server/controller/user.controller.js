@@ -53,14 +53,17 @@ const registerUser = asyncHandler(async (req, res) => {
 
         await newUser.save(); // ✅ pre('save') runs here
 
-        const userObj = newUser.toObject();
-        delete userObj.password;
-        delete userObj.refreshToken;
+        const userResponse = {
+            _id: newUser._id,
+            name: newUser.fullName,
+            email: newUser.email,
+            username: newUser.username
+        };
 
         return res
             .status(201)
             .json(
-                new ApiResponse(userObj, 201, "User registered successfully")
+                new ApiResponse(userResponse, 201, "User registered successfully")
             );
     } catch (error) {
         console.error("Error in User Registration: ", error.message);
@@ -107,6 +110,14 @@ const loginUser = asyncHandler(async (req, res) => {
             path: "/"
         };
 
+        // Create user object without sensitive data
+        const userResponse = {
+            _id: user._id,
+            name: user.fullName,
+            email: user.email,
+            username: user.username
+        };
+
         return res
             .status(200)
             .cookie("accessToken", accessToken, options)
@@ -114,7 +125,7 @@ const loginUser = asyncHandler(async (req, res) => {
             .json(
                 new ApiResponse(
                     {
-                        user,
+                        user: userResponse,
                         accessToken,
                         refreshToken
                     },
