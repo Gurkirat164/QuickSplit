@@ -19,8 +19,10 @@ const ChatRoom = () => {
   const dispatch = useDispatch();
   const [messageInput, setMessageInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
+  const [isConnected, setIsConnected] = useState(false);
   const messagesEndRef = useRef(null);
   const typingTimeoutRef = useRef(null);
+  const hasJoinedRoom = useRef(false);
 
   const { token, user } = useSelector((state) => state.auth);
   const { messages, activeRoom, typingUsers, loading } = useSelector((state) => state.chat);
@@ -34,9 +36,50 @@ const ChatRoom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
+  // Monitor socket connection status
+  useEffect(() => {
+    if (!socket) return;
+
+    const handleConnect = () => {
+      console.log('✅ Socket connected in ChatRoom');
+      setIsConnected(true);
+      // Rejoin room if we were in one
+      if (groupId && hasJoinedRoom.current) {
+        console.log('Rejoining room after reconnection:', groupId);
+        socket.emit('join_room', groupId);
+      }
+    };
+
+    const handleDisconnect = () => {
+      console.log('⚠️ Socket disconnected in ChatRoom');
+      setIsConnected(false);
+    };
+
+    socket.on('connect', handleConnect);
+    socket.on('disconnect', handleDisconnect);
+
+    // Set initial connection state
+    setIsConnected(socket.connected);
+
+    return () => {
+      socket.off('connect', handleConnect);
+      socket.off('disconnect', handleDisconnect);
+    };
+  }, [socket, groupId]);
+
   // Initialize chat room
   useEffect(() => {
-    if (groupId && socket) {
+    if (!groupId || !socket) return;
+
+    // Wait for socket to be connected before joining
+    const joinRoom = () => {
+      if (!socket.connected) {
+        console.log('Waiting for socket connection...');
+        return;
+      }
+
+      console.log('Joining room:', groupId);
+      
       // Set active room
       dispatch(setActiveRoom(groupId));
 
@@ -45,53 +88,72 @@ const ChatRoom = () => {
 
       // Join the room
       socket.emit('join_room', groupId);
+      hasJoinedRoom.current = true;
 
       // Clear unread count
       dispatch(clearUnreadCount(groupId));
+    };
 
-      // Socket event listeners
-      socket.on('receive_message', (message) => {
-        if (message.roomId === groupId) {
-          dispatch(addMessage({ roomId: groupId, message }));
-          setTimeout(scrollToBottom, 100);
-        }
-      });
-
-      socket.on('user_typing', ({ userId, userName, isTyping }) => {
-        if (userId !== user._id) {
-          dispatch(setTypingUser({ roomId: groupId, userId, userName, isTyping }));
-        }
-      });
-
-      socket.on('user_joined', ({ userId, userName }) => {
-        dispatch(addOnlineUser(userId));
-      });
-
-      socket.on('user_left', ({ userId }) => {
-        dispatch(removeOnlineUser(userId));
-      });
-
-      socket.on('room_joined', (data) => {
-        console.log('Successfully joined room:', data.roomId);
-      });
-
-      socket.on('error', (error) => {
-        console.error('Socket error:', error);
-      });
-
-      // Cleanup
-      return () => {
-        socket.emit('leave_room', groupId);
-        socket.off('receive_message');
-        socket.off('user_typing');
-        socket.off('user_joined');
-        socket.off('user_left');
-        socket.off('room_joined');
-        socket.off('error');
-        dispatch(clearTypingUsers(groupId));
-        dispatch(setActiveRoom(null));
-      };
+    // If already connected, join immediately
+    if (socket.connected) {
+      joinRoom();
+    } else {
+      // Wait for connection
+      socket.once('connect', joinRoom);
     }
+
+    // Socket event listeners
+    const handleReceiveMessage = (message) => {
+      if (message.roomId === groupId) {
+        dispatch(addMessage({ roomId: groupId, message }));
+        setTimeout(scrollToBottom, 100);
+      }
+    };
+
+    const handleUserTyping = ({ userId, userName, isTyping }) => {
+      if (userId !== user._id) {
+        dispatch(setTypingUser({ roomId: groupId, userId, userName, isTyping }));
+      }
+    };
+
+    const handleUserJoined = ({ userId, userName }) => {
+      dispatch(addOnlineUser(userId));
+    };
+
+    const handleUserLeft = ({ userId }) => {
+      dispatch(removeOnlineUser(userId));
+    };
+
+    const handleRoomJoined = (data) => {
+      console.log('✅ Successfully joined room:', data.roomId);
+    };
+
+    const handleError = (error) => {
+      console.error('❌ Socket error:', error);
+    };
+
+    socket.on('receive_message', handleReceiveMessage);
+    socket.on('user_typing', handleUserTyping);
+    socket.on('user_joined', handleUserJoined);
+    socket.on('user_left', handleUserLeft);
+    socket.on('room_joined', handleRoomJoined);
+    socket.on('error', handleError);
+
+    // Cleanup
+    return () => {
+      if (socket.connected) {
+        socket.emit('leave_room', groupId);
+      }
+      socket.off('receive_message', handleReceiveMessage);
+      socket.off('user_typing', handleUserTyping);
+      socket.off('user_joined', handleUserJoined);
+      socket.off('user_left', handleUserLeft);
+      socket.off('room_joined', handleRoomJoined);
+      socket.off('error', handleError);
+      dispatch(clearTypingUsers(groupId));
+      dispatch(setActiveRoom(null));
+      hasJoinedRoom.current = false;
+    };
   }, [groupId, socket, dispatch, user]);
 
   // Auto-scroll when messages change
@@ -124,21 +186,31 @@ const ChatRoom = () => {
   const handleSendMessage = (e) => {
     e.preventDefault();
 
-    if (!messageInput.trim() || !socket) return;
+    if (!messageInput.trim() || !socket || !isConnected) {
+      console.warn('Cannot send message:', { hasInput: !!messageInput.trim(), hasSocket: !!socket, isConnected });
+      return;
+    }
 
     const message = messageInput.trim();
     setMessageInput('');
     setIsTyping(false);
 
     // Stop typing indicator
-    socket.emit('typing', { roomId: groupId, isTyping: false });
+    if (socket.connected) {
+      socket.emit('typing', { roomId: groupId, isTyping: false });
+    }
 
     // Send message via socket
-    socket.emit('send_message', {
-      roomId: groupId,
-      message,
-      messageType: 'text',
-    });
+    if (socket.connected) {
+      socket.emit('send_message', {
+        roomId: groupId,
+        message,
+        messageType: 'text',
+      });
+      console.log('Message sent via socket');
+    } else {
+      console.error('Socket not connected, cannot send message');
+    }
   };
 
   // Format timestamp
@@ -189,10 +261,28 @@ const ChatRoom = () => {
     <div className="flex flex-col h-full bg-white rounded-lg shadow-sm">
       {/* Chat Header */}
       <div className="px-6 py-4 border-b border-gray-200 bg-gradient-to-r from-blue-50 to-indigo-50">
-        <h3 className="text-lg font-semibold text-gray-800">Group Chat</h3>
-        <p className="text-sm text-gray-500 mt-1">
-          {currentMessages.length} messages
-        </p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h3 className="text-lg font-semibold text-gray-800">Group Chat</h3>
+            <p className="text-sm text-gray-500 mt-1">
+              {currentMessages.length} messages
+            </p>
+          </div>
+          {/* Connection Status Indicator */}
+          <div className="flex items-center gap-2">
+            {isConnected ? (
+              <>
+                <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                <span className="text-xs text-green-600 font-medium">Connected</span>
+              </>
+            ) : (
+              <>
+                <div className="w-2 h-2 bg-red-500 rounded-full"></div>
+                <span className="text-xs text-red-600 font-medium">Connecting...</span>
+              </>
+            )}
+          </div>
+        </div>
       </div>
 
       {/* Messages Container */}
@@ -297,6 +387,11 @@ const ChatRoom = () => {
         onSubmit={handleSendMessage}
         className="px-6 py-4 border-t border-gray-200 bg-gray-50"
       >
+        {!isConnected && (
+          <div className="mb-2 text-center text-sm text-yellow-600 bg-yellow-50 py-2 rounded">
+            <span className="font-medium">⚠️ Reconnecting to server...</span>
+          </div>
+        )}
         <div className="flex items-center gap-3">
           <input
             type="text"
@@ -305,13 +400,14 @@ const ChatRoom = () => {
               setMessageInput(e.target.value);
               handleTyping();
             }}
-            placeholder="Type a message..."
-            className="flex-1 px-4 py-3 bg-white border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+            placeholder={isConnected ? "Type a message..." : "Waiting for connection..."}
+            disabled={!isConnected}
+            className="flex-1 px-4 py-3 bg-white border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed transition-all"
             maxLength={2000}
           />
           <button
             type="submit"
-            disabled={!messageInput.trim()}
+            disabled={!messageInput.trim() || !isConnected}
             className="p-3 bg-gradient-to-r from-blue-500 to-indigo-600 text-white rounded-full hover:from-blue-600 hover:to-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all transform hover:scale-105 active:scale-95"
           >
             <Send className="w-5 h-5" />
