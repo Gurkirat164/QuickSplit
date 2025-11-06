@@ -18,21 +18,21 @@ const corsOptions = {
     origin: function (origin, callback) {
         // Allow requests with no origin (like mobile apps, Postman, or same-origin)
         if (!origin) return callback(null, true);
-        
+
         // If CORS_ORIGIN is *, allow all origins (development only!)
-        if (process.env.CORS_ORIGIN === '*') {
+        if (process.env.CORS_ORIGIN === "*") {
             return callback(null, true);
         }
-        
+
         // Otherwise check if origin is in allowed list
-        const allowedOrigins = process.env.CORS_ORIGIN 
-            ? process.env.CORS_ORIGIN.split(',').map(o => o.trim()) 
+        const allowedOrigins = process.env.CORS_ORIGIN
+            ? process.env.CORS_ORIGIN.split(",").map((o) => o.trim())
             : [];
-            
+
         if (allowedOrigins.includes(origin)) {
             callback(null, true);
         } else {
-            callback(new Error('Not allowed by CORS'));
+            callback(new Error("Not allowed by CORS"));
         }
     }
 };
