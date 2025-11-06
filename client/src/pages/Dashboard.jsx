@@ -20,12 +20,12 @@ const Dashboard = () => {
   const totalExpenses = Object.values(expensesByGroup).flat().length;
   
   const totalOwed = groups.reduce((sum, group) => {
-    const balance = group.balances?.find(b => b.user === user._id)?.amount || 0;
+    const balance = group.balances?.find(b => b.user === user?._id)?.amount || 0;
     return balance < 0 ? sum + Math.abs(balance) : sum;
   }, 0);
 
   const totalOwedTo = groups.reduce((sum, group) => {
-    const balance = group.balances?.find(b => b.user === user._id)?.amount || 0;
+    const balance = group.balances?.find(b => b.user === user?._id)?.amount || 0;
     return balance > 0 ? sum + balance : sum;
   }, 0);
 

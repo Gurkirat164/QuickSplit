@@ -2,7 +2,7 @@ import { useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Users, Receipt, TrendingUp, Plus, ArrowLeft, Settings, Trash2 } from 'lucide-react';
-import { fetchGroupDetails, fetchBalances, deleteGroup } from '../store/slices/groupSlice';
+import { fetchGroupDetails, fetchBalances, deleteGroup, clearCurrentGroup } from '../store/slices/groupSlice';
 import { fetchExpenses } from '../store/slices/expenseSlice';
 import { openModal } from '../store/slices/uiSlice';
 import { formatCurrency, getRelativeTime, simplifyDebts } from '../utils/helpers';
@@ -18,6 +18,8 @@ const GroupDetail = () => {
 
   useEffect(() => {
     if (groupId) {
+      // Clear the previous group data first to avoid stale data
+      dispatch(clearCurrentGroup());
       dispatch(fetchGroupDetails(groupId));
       dispatch(fetchBalances(groupId));
       dispatch(fetchExpenses(groupId));
@@ -184,22 +186,50 @@ const GroupDetail = () => {
         <div className="space-y-6">
           {/* Members */}
           <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
-            <h2 className="text-xl font-bold text-gray-900 mb-4">Members</h2>
-            <div className="space-y-3">
-              {currentGroup.members?.map((member) => (
-                <div key={member._id} className="flex items-center space-x-3">
-                  <div className="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center">
-                    <span className="text-white font-semibold">
-                      {member.name.charAt(0).toUpperCase()}
-                    </span>
-                  </div>
-                  <div className="flex-1">
-                    <p className="font-medium text-gray-900">{member.name}</p>
-                    <p className="text-sm text-gray-500">{member.email}</p>
-                  </div>
-                </div>
-              ))}
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-xl font-bold text-gray-900">Members</h2>
+              <button
+                onClick={() => dispatch(openModal('addMember'))}
+                className="flex items-center space-x-2 px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm"
+              >
+                <Plus className="w-4 h-4" />
+                <span>Add</span>
+              </button>
             </div>
+            
+            {!currentGroup.members || currentGroup.members.length === 0 ? (
+              <div className="text-center py-8">
+                <Users className="w-12 h-12 text-gray-400 mx-auto mb-3" />
+                <p className="text-gray-500 mb-4">No members added yet</p>
+                <button
+                  onClick={() => dispatch(openModal('addMember'))}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                >
+                  Add Members
+                </button>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {currentGroup.members.map((member) => (
+                  <div key={member._id} className="flex items-center space-x-3">
+                    <div className="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center">
+                      <span className="text-white font-semibold">
+                        {member.name.charAt(0).toUpperCase()}
+                      </span>
+                    </div>
+                    <div className="flex-1">
+                      <p className="font-medium text-gray-900">
+                        {member.name}
+                        {member._id === user._id && (
+                          <span className="font-normal ml-1">(me)</span>
+                        )}
+                      </p>
+                      <p className="text-sm text-gray-500">{member.email}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Settlements */}

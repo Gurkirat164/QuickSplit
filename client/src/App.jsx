@@ -20,6 +20,7 @@ import Settings from './pages/Settings';
 // Modals
 import CreateGroupModal from './components/CreateGroupModal';
 import AddExpenseModal from './components/AddExpenseModal';
+import AddMemberModal from './components/AddMemberModal';
 
 import './index.css';
 
@@ -43,12 +44,12 @@ function App() {
     <Router>
       <div className="App">
         <Routes>
-          {/* Public Routes */}
-          <Route path="/login" element={<Login />} />
-          <Route path="/register" element={<Register />} />
-          <Route path="/temp-user" element={<TempUserPage />} />
+          {/* Public Routes - Redirect to Dashboard (Bypass Login) */}
+          <Route path="/login" element={<Navigate to="/dashboard" replace />} />
+          <Route path="/register" element={<Navigate to="/dashboard" replace />} />
+          <Route path="/temp-user" element={<Navigate to="/dashboard" replace />} />
 
-          {/* Protected Routes */}
+          {/* Protected Routes - Now Unprotected for Development */}
           <Route path="/" element={<Layout />}>
             <Route index element={<Navigate to="/dashboard" replace />} />
             <Route path="dashboard" element={<Dashboard />} />
@@ -65,6 +66,7 @@ function App() {
         {/* Modals */}
         <CreateGroupModal />
         <AddExpenseModal />
+        <AddMemberModal />
       </div>
     </Router>
   );

@@ -23,6 +23,18 @@ const AddExpenseModal = () => {
 
   const currencies = ['USD', 'EUR', 'GBP', 'INR', 'CAD', 'AUD', 'JPY'];
 
+  // Prevent body scroll when modal is open
+  useEffect(() => {
+    if (modals.addExpense) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = 'unset';
+    }
+    return () => {
+      document.body.style.overflow = 'unset';
+    };
+  }, [modals.addExpense]);
+
   useEffect(() => {
     if (currentGroup) {
       setFormData((prev) => ({
@@ -103,8 +115,15 @@ const AddExpenseModal = () => {
   if (!modals.addExpense) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 overflow-y-auto">
-      <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl p-6 m-4">
+    <div 
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm"
+      onClick={handleClose}
+    >
+      <div className="w-full h-full flex items-center justify-center p-4 overflow-y-auto">
+        <div 
+          className="bg-white rounded-xl shadow-2xl w-full max-w-2xl p-6 my-8 animate-fadeIn max-h-[90vh] overflow-y-auto"
+          onClick={(e) => e.stopPropagation()}
+        >
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-2xl font-bold text-gray-800">Add Expense</h2>
@@ -293,6 +312,7 @@ const AddExpenseModal = () => {
           </div>
         </form>
       </div>
+    </div>
     </div>
   );
 };

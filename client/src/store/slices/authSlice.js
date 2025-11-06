@@ -1,11 +1,32 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import { authAPI } from '../../services/api';
+import { dummyUser } from '../../data/dummyData';
+
+// Temporary flag - set to false when API is ready
+const USE_DUMMY_DATA = true;
 
 // Async thunks
 export const login = createAsyncThunk(
   'auth/login',
   async (credentials, { rejectWithValue }) => {
     try {
+      // Use dummy data if flag is enabled
+      if (USE_DUMMY_DATA) {
+        return new Promise((resolve, reject) => {
+          setTimeout(() => {
+            // Simple validation for demo
+            if (credentials.email && credentials.password) {
+              resolve({
+                user: dummyUser,
+                token: 'dummy_token_' + Date.now(),
+              });
+            } else {
+              reject('Invalid credentials');
+            }
+          }, 500);
+        });
+      }
+      
       const response = await authAPI.login(credentials);
       localStorage.setItem('token', response.data.token);
       return response.data;
@@ -19,6 +40,28 @@ export const register = createAsyncThunk(
   'auth/register',
   async (userData, { rejectWithValue }) => {
     try {
+      // Use dummy data if flag is enabled
+      if (USE_DUMMY_DATA) {
+        return new Promise((resolve, reject) => {
+          setTimeout(() => {
+            if (userData.email && userData.password && userData.name) {
+              const newUser = {
+                _id: `user_${Date.now()}`,
+                name: userData.name,
+                email: userData.email,
+                username: userData.email.split('@')[0],
+              };
+              resolve({
+                user: newUser,
+                token: 'dummy_token_' + Date.now(),
+              });
+            } else {
+              reject('Registration failed - missing required fields');
+            }
+          }, 500);
+        });
+      }
+      
       const response = await authAPI.register(userData);
       localStorage.setItem('token', response.data.token);
       return response.data;
@@ -32,6 +75,15 @@ export const fetchCurrentUser = createAsyncThunk(
   'auth/fetchCurrentUser',
   async (_, { rejectWithValue }) => {
     try {
+      // Use dummy data if flag is enabled
+      if (USE_DUMMY_DATA) {
+        return new Promise((resolve) => {
+          setTimeout(() => {
+            resolve(dummyUser);
+          }, 300);
+        });
+      }
+      
       const response = await authAPI.getCurrentUser();
       return response.data;
     } catch (error) {
@@ -43,9 +95,9 @@ export const fetchCurrentUser = createAsyncThunk(
 const authSlice = createSlice({
   name: 'auth',
   initialState: {
-    user: null,
+    user: USE_DUMMY_DATA ? dummyUser : null,
     token: localStorage.getItem('token'),
-    isAuthenticated: false,
+    isAuthenticated: USE_DUMMY_DATA ? true : false,
     loading: false,
     error: null,
   },
