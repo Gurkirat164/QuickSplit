@@ -3,7 +3,8 @@ import {
     loginUser,
     logoutUser,
     registerUser
-} from "../controller/user.controller";
+} from "../controller/user.controller.js";
+import { verifyJWT } from "../middleware/auth.middleware.js";
 
 const router = Router();
 
@@ -13,7 +14,7 @@ router.route("/login").post(loginUser, (_, res) => {
     res.send("Login Successful");
 });
 
-router.route("/logout").post(logoutUser, (_, res) => {
+router.route("/logout").post(verifyJWT, logoutUser, (_, res) => {
     res.send("Logout Successful");
 });
 
