@@ -19,4 +19,7 @@ app.use(
 
 app.use(express.static("public/temp"));
 
+import userRoute from "./routes/user.route.js";
+app.use("/api/v1/users", cookies(), userRoute);
+
 export { app };
