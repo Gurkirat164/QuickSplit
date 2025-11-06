@@ -587,25 +587,35 @@ const getBalances = asyncHandler(async (req, res) => {
             balanceMap.set(member.userId._id.toString(), 0);
         });
 
+        // Calculate total spent (excluding settlements)
+        let totalSpent = 0;
+
         // Calculate balances based on expenses
         expenses.forEach((expense) => {
             if (expense.isSettlement) {
-                // For settlements, adjust balances accordingly
+                // For settlements: when 'from' pays 'to' an amount
+                // The payer's balance INCREASES (moves toward zero from negative)
+                // The receiver's balance DECREASES (moves toward zero from positive)
                 const payerId = expense.paidBy.toString();
                 const receiverId = expense.splitBetween[0]?.toString();
 
                 if (payerId && receiverId) {
+                    // Payer's balance increases (they paid off debt)
                     balanceMap.set(
                         payerId,
-                        (balanceMap.get(payerId) || 0) - expense.amount
+                        (balanceMap.get(payerId) || 0) + expense.amount
                     );
+                    // Receiver's balance decreases (debt to them was paid)
                     balanceMap.set(
                         receiverId,
-                        (balanceMap.get(receiverId) || 0) + expense.amount
+                        (balanceMap.get(receiverId) || 0) - expense.amount
                     );
                 }
+                // Don't add settlements to totalSpent
             } else {
-                // Regular expense
+                // Regular expense - add to total spent
+                totalSpent += expense.amount;
+
                 const splits = expense.calculateSplits();
                 const payerId = expense.paidBy.toString();
 
@@ -626,10 +636,13 @@ const getBalances = asyncHandler(async (req, res) => {
             }
         });
 
-        // Update group member balances
+        // Update group member balances and totalSpent
         group.members.forEach((member) => {
             member.balance = balanceMap.get(member.userId._id.toString()) || 0;
         });
+        
+        // Update group's totalSpent (excluding settlements)
+        group.totalSpent = totalSpent;
 
         await group.save();
 

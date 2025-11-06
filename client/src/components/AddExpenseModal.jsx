@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { X, Plus, Trash2 } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { createExpense } from '../store/slices/expenseSlice';
+import { createExpense, fetchExpenses } from '../store/slices/expenseSlice';
 import { closeModal } from '../store/slices/uiSlice';
 
 const AddExpenseModal = () => {
@@ -84,6 +84,26 @@ const AddExpenseModal = () => {
       setError('Please select a group');
       return;
     }
+
+    // Validate amount is greater than 0
+    const amount = parseFloat(formData.amount);
+    if (!amount || amount <= 0) {
+      setError('Amount must be greater than 0');
+      toast.error('Amount must be greater than 0');
+      return;
+    }
+
+    // Validate custom split amounts add up to total
+    if (formData.splitType === 'custom') {
+      const totalSplit = formData.splits.reduce((sum, split) => sum + (parseFloat(split.amount) || 0), 0);
+      const difference = Math.abs(totalSplit - amount);
+      
+      if (difference > 0.01) { // Allow for small floating point differences
+        setError(`Split amounts must add up to ${amount.toFixed(2)}. Current total: ${totalSplit.toFixed(2)}`);
+        toast.error(`Split amounts must equal total amount`);
+        return;
+      }
+    }
     
     setLoading(true);
     try {
@@ -112,6 +132,12 @@ const AddExpenseModal = () => {
           },
         })
       ).unwrap();
+      
+      // Refresh expenses list if on group detail page
+      if (currentGroup && currentGroup._id === formData.groupId) {
+        await dispatch(fetchExpenses(formData.groupId));
+      }
+      
       toast.success('Expense created successfully!');
       handleClose();
     } catch (error) {
@@ -138,10 +164,13 @@ const AddExpenseModal = () => {
   };
 
   const handleSplitAmountChange = (userId, amount) => {
+    // Allow empty string for editing, but convert to 0 if empty
+    const numAmount = amount === '' ? 0 : parseFloat(amount);
+    
     setFormData((prev) => ({
       ...prev,
       splits: prev.splits.map((split) =>
-        split.user === userId ? { ...split, amount: parseFloat(amount) || 0 } : split
+        split.user === userId ? { ...split, amount: numAmount } : split
       ),
     }));
   };
@@ -245,7 +274,7 @@ const AddExpenseModal = () => {
               <input
                 type="number"
                 required
-                min="0"
+                min="0.01"
                 step="0.01"
                 value={formData.amount}
                 onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
@@ -324,6 +353,11 @@ const AddExpenseModal = () => {
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Split Details
+                {formData.splitType === 'custom' && formData.amount && (
+                  <span className="ml-2 text-xs text-gray-500">
+                    (Remaining: {(parseFloat(formData.amount) - formData.splits.reduce((sum, split) => sum + (parseFloat(split.amount) || 0), 0)).toFixed(2)} / Total: {parseFloat(formData.amount).toFixed(2)})
+                  </span>
+                )}
               </label>
               <div className="space-y-2 max-h-48 overflow-y-auto">
                 {formData.splits.map((split) => (

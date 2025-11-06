@@ -1,5 +1,5 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
-import { expenseAPI } from '../../services/api';
+import { expenseAPI, groupAPI } from '../../services/api';
 
 // Async thunks
 export const fetchExpenses = createAsyncThunk(
@@ -17,11 +17,15 @@ export const fetchExpenses = createAsyncThunk(
 
 export const createExpense = createAsyncThunk(
   'expenses/createExpense',
-  async ({ groupId, expenseData }, { rejectWithValue }) => {
+  async ({ groupId, expenseData }, { rejectWithValue, dispatch }) => {
     try {
       const response = await expenseAPI.createExpense(groupId, expenseData);
-      // Backend returns: { payload: {...expense}, statusCode, message }
-      return response.data.payload;
+      // Fetch updated group details to get new balances and totalSpent
+      const groupResponse = await groupAPI.getGroupById(groupId);
+      return { 
+        expense: response.data.payload,
+        group: groupResponse.data.payload
+      };
     } catch (error) {
       return rejectWithValue(error.response?.data?.message || 'Failed to create expense');
     }
@@ -100,11 +104,11 @@ const expenseSlice = createSlice({
       })
       .addCase(createExpense.fulfilled, (state, action) => {
         state.loading = false;
-        const groupId = action.payload.group;
+        const groupId = action.payload.expense.group;
         if (!state.expensesByGroup[groupId]) {
           state.expensesByGroup[groupId] = [];
         }
-        state.expensesByGroup[groupId].unshift(action.payload);
+        state.expensesByGroup[groupId].unshift(action.payload.expense);
       })
       .addCase(createExpense.rejected, (state, action) => {
         state.loading = false;

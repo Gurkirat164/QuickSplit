@@ -4,11 +4,11 @@ import { X, Plus, Trash2, Mail } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { createGroup } from '../store/slices/groupSlice';
 import { closeModal } from '../store/slices/uiSlice';
+import { authAPI } from '../services/api';
 
 const CreateGroupModal = () => {
   const dispatch = useDispatch();
   const { modals } = useSelector((state) => state.ui);
-  // eslint-disable-next-line no-unused-vars
   const { user } = useSelector((state) => state.auth);
   const [formData, setFormData] = useState({
     name: '',
@@ -16,8 +16,9 @@ const CreateGroupModal = () => {
     currency: 'INR',
   });
   const [members, setMembers] = useState([]);
-  const [newMember, setNewMember] = useState({ email: '', name: '' });
+  const [newMember, setNewMember] = useState('');
   const [loading, setLoading] = useState(false);
+  const [checkingUser, setCheckingUser] = useState(false);
 
   const currencies = ['USD', 'EUR', 'GBP', 'INR', 'CAD', 'AUD', 'JPY'];
 
@@ -33,21 +34,53 @@ const CreateGroupModal = () => {
     };
   }, [modals.createGroup]);
 
-  const handleAddMember = () => {
-    if (newMember.email.trim()) {
-      // Check if email already exists
-      if (members.some(m => m.email === newMember.email)) {
-        toast.error('This email is already added');
-        return;
-      }
-      
+  const handleAddMember = async () => {
+    if (!newMember.trim()) {
+      toast.error('Please enter an email');
+      return;
+    }
+
+    // Check if it's the current user's email
+    if (newMember.toLowerCase() === user?.email?.toLowerCase()) {
+      toast.error('You will be automatically added as a member');
+      return;
+    }
+
+    // Check if email already exists in members list
+    if (members.some(m => m.email.toLowerCase() === newMember.toLowerCase())) {
+      toast.error('This email is already added');
+      return;
+    }
+
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(newMember)) {
+      toast.error('Please enter a valid email address');
+      return;
+    }
+
+    setCheckingUser(true);
+    try {
+      // Check if user exists in database
+      const response = await authAPI.checkUserExists(newMember);
+      const userData = response.data.payload;
+
+      // Add user to members list
       setMembers([...members, {
-        email: newMember.email,
-        name: newMember.name || newMember.email,
-        _id: `temp_${Date.now()}_${Math.random()}`,
+        email: userData.email,
+        name: userData.name,
+        _id: userData._id,
       }]);
-      setNewMember({ email: '', name: '' });
+      setNewMember('');
       toast.success('Member added to list');
+    } catch (error) {
+      if (error.response?.status === 404) {
+        toast.error('User not found. Please check the email address.');
+      } else {
+        toast.error(error.response?.data?.message || 'Failed to validate user');
+      }
+    } finally {
+      setCheckingUser(false);
     }
   };
 
@@ -69,7 +102,7 @@ const CreateGroupModal = () => {
       toast.success('Group created successfully!');
       setFormData({ name: '', description: '', currency: 'INR' });
       setMembers([]);
-      setNewMember({ email: '', name: '' });
+      setNewMember('');
       dispatch(closeModal('createGroup'));
     } catch (error) {
       console.error('Failed to create group:', error);
@@ -82,7 +115,7 @@ const CreateGroupModal = () => {
   const handleClose = () => {
     setFormData({ name: '', description: '', currency: 'INR' });
     setMembers([]);
-    setNewMember({ email: '', name: '' });
+    setNewMember('');
     dispatch(closeModal('createGroup'));
   };
 
@@ -163,32 +196,28 @@ const CreateGroupModal = () => {
             </label>
             
             {/* Add Member Input */}
-            <div className="space-y-2 mb-3">
-              <div className="flex gap-2">
-                <input
-                  type="email"
-                  value={newMember.email}
-                  onChange={(e) => setNewMember({ ...newMember, email: e.target.value })}
-                  onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddMember())}
-                  className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
-                  placeholder="member@example.com"
-                />
-                <button
-                  type="button"
-                  onClick={handleAddMember}
-                  className="px-4 py-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors"
-                >
-                  <Plus className="w-4 h-4" />
-                </button>
-              </div>
+            <div className="flex gap-2 mb-3">
               <input
-                type="text"
-                value={newMember.name}
-                onChange={(e) => setNewMember({ ...newMember, name: e.target.value })}
+                type="email"
+                value={newMember}
+                onChange={(e) => setNewMember(e.target.value)}
                 onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddMember())}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
-                placeholder="Member name (optional)"
+                disabled={checkingUser}
+                className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm disabled:bg-gray-100 disabled:cursor-not-allowed"
+                placeholder="member@example.com"
               />
+              <button
+                type="button"
+                onClick={handleAddMember}
+                disabled={checkingUser}
+                className="px-4 py-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {checkingUser ? (
+                  <div className="w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
+                ) : (
+                  <Plus className="w-4 h-4" />
+                )}
+              </button>
             </div>
 
             {/* Members List */}
@@ -225,7 +254,7 @@ const CreateGroupModal = () => {
             )}
             
             <p className="text-xs text-gray-500 mt-2">
-              You will be automatically added as a member. Add other members by email.
+              You will be automatically added as a member. Only registered users can be added.
             </p>
           </div>
 

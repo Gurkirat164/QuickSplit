@@ -1,5 +1,6 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import { groupAPI } from '../../services/api';
+import { createExpense } from './expenseSlice';
 
 // Async thunks
 export const fetchGroups = createAsyncThunk(
@@ -107,15 +108,18 @@ export const fetchBalances = createAsyncThunk(
 
 export const settleUp = createAsyncThunk(
   'groups/settleUp',
-  async ({ groupId, payerId, receiverId, amount }, { rejectWithValue }) => {
+  async ({ groupId, from, to, amount }, { rejectWithValue, dispatch }) => {
     try {
-      const response = await groupAPI.settleExpense(groupId, {
-        payerId,
-        receiverId,
+      // Record the settlement
+      await groupAPI.settleExpense(groupId, {
+        from,
+        to,
         amount
       });
-      // Backend returns: { payload: {...group}, statusCode, message }
-      return response.data.payload;
+      
+      // Fetch updated group details to get new balances
+      const groupResponse = await groupAPI.getGroupById(groupId);
+      return groupResponse.data.payload;
     } catch (error) {
       return rejectWithValue(error.response?.data?.message || 'Failed to settle up');
     }
@@ -222,6 +226,20 @@ const groupSlice = createSlice({
         const groupIndex = state.groups.findIndex(g => g._id === action.payload._id);
         if (groupIndex !== -1) {
           state.groups[groupIndex] = action.payload;
+        }
+      })
+      // Handle expense creation (update group balances and totalSpent)
+      .addCase(createExpense.fulfilled, (state, action) => {
+        if (action.payload.group) {
+          // Update current group if it matches
+          if (state.currentGroup && state.currentGroup._id === action.payload.group._id) {
+            state.currentGroup = action.payload.group;
+          }
+          // Update in groups list
+          const groupIndex = state.groups.findIndex(g => g._id === action.payload.group._id);
+          if (groupIndex !== -1) {
+            state.groups[groupIndex] = action.payload.group;
+          }
         }
       });
   },

@@ -245,8 +245,47 @@ const createExpense = asyncHandler(async (req, res) => {
 
         await newExpense.save();
 
-        // Update group's total spent
-        group.totalSpent += newExpense.amount;
+        // Update group's total spent (only for non-settlement expenses)
+        if (!newExpense.isSettlement) {
+            group.totalSpent += newExpense.amount;
+        }
+        
+        // Recalculate balances for all members
+        const allExpenses = await Expense.find({ group: groupId });
+        const balanceMap = new Map();
+        group.members.forEach((member) => {
+            balanceMap.set(member.userId._id.toString(), 0);
+        });
+
+        let totalSpent = 0;
+        allExpenses.forEach((expense) => {
+            if (expense.isSettlement) {
+                // For settlements: when 'from' pays 'to' an amount
+                // The payer's balance INCREASES (moves toward zero from negative)
+                // The receiver's balance DECREASES (moves toward zero from positive)
+                const payerId = expense.paidBy.toString();
+                const receiverId = expense.splitBetween[0]?.toString();
+                if (payerId && receiverId) {
+                    balanceMap.set(payerId, (balanceMap.get(payerId) || 0) + expense.amount);
+                    balanceMap.set(receiverId, (balanceMap.get(receiverId) || 0) - expense.amount);
+                }
+            } else {
+                totalSpent += expense.amount;
+                const splits = expense.calculateSplits();
+                const payerId = expense.paidBy.toString();
+                balanceMap.set(payerId, (balanceMap.get(payerId) || 0) + expense.amount);
+                splits.forEach((split) => {
+                    const userId = split.userId.toString();
+                    balanceMap.set(userId, (balanceMap.get(userId) || 0) - split.amount);
+                });
+            }
+        });
+
+        group.members.forEach((member) => {
+            member.balance = balanceMap.get(member.userId._id.toString()) || 0;
+        });
+        group.totalSpent = totalSpent;
+        
         await group.save();
 
         // Populate the expense
@@ -527,6 +566,43 @@ const settleExpense = asyncHandler(async (req, res) => {
         });
 
         await settlement.save();
+
+        // Recalculate all balances after settlement
+        const allExpenses = await Expense.find({ group: groupId });
+        const balanceMap = new Map();
+        group.members.forEach((member) => {
+            balanceMap.set(member.userId._id.toString(), 0);
+        });
+
+        let totalSpent = 0;
+        allExpenses.forEach((expense) => {
+            if (expense.isSettlement) {
+                // For settlements: when 'from' pays 'to' an amount
+                // The payer's balance INCREASES (moves toward zero from negative)
+                // The receiver's balance DECREASES (moves toward zero from positive)
+                const payerId = expense.paidBy.toString();
+                const receiverId = expense.splitBetween[0]?.toString();
+                if (payerId && receiverId) {
+                    balanceMap.set(payerId, (balanceMap.get(payerId) || 0) + expense.amount);
+                    balanceMap.set(receiverId, (balanceMap.get(receiverId) || 0) - expense.amount);
+                }
+            } else {
+                totalSpent += expense.amount;
+                const splits = expense.calculateSplits();
+                const payerId = expense.paidBy.toString();
+                balanceMap.set(payerId, (balanceMap.get(payerId) || 0) + expense.amount);
+                splits.forEach((split) => {
+                    const userId = split.userId.toString();
+                    balanceMap.set(userId, (balanceMap.get(userId) || 0) - split.amount);
+                });
+            }
+        });
+
+        group.members.forEach((member) => {
+            member.balance = balanceMap.get(member.userId._id.toString()) || 0;
+        });
+        group.totalSpent = totalSpent;
+        await group.save();
 
         // Populate the settlement
         await settlement.populate("paidBy", "fullName email username");

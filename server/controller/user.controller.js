@@ -242,4 +242,57 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
     }
 });
 
-export { registerUser, loginUser, logoutUser };
+const checkUserExists = asyncHandler(async (req, res) => {
+    try {
+        const { email } = req.query;
+
+        if (!email) {
+            throw new ApiError(400, "Email is required");
+        }
+
+        const user = await User.findOne({ 
+            email: email.toLowerCase() 
+        }).select("_id fullName email username");
+
+        if (!user) {
+            return res
+                .status(404)
+                .json(
+                    new ApiResponse(
+                        null,
+                        404,
+                        "User not found"
+                    )
+                );
+        }
+
+        const userResponse = {
+            _id: user._id,
+            name: user.fullName,
+            email: user.email,
+            username: user.username
+        };
+
+        return res
+            .status(200)
+            .json(
+                new ApiResponse(
+                    userResponse,
+                    200,
+                    "User found"
+                )
+            );
+    } catch (error) {
+        return res
+            .status(error.statusCode || 500)
+            .json(
+                new ApiResponse(
+                    null,
+                    error.statusCode || 500,
+                    error.message
+                )
+            );
+    }
+});
+
+export { registerUser, loginUser, logoutUser, checkUserExists };

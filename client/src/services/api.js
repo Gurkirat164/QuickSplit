@@ -46,6 +46,7 @@ export const authAPI = {
   register: (userData) => api.post('/auth/register', userData),
   getCurrentUser: () => api.get('/auth/me'),
   logout: () => api.post('/auth/logout'),
+  checkUserExists: (email) => api.get('/auth/check', { params: { email } }),
 };
 
 // Group API
@@ -58,6 +59,7 @@ export const groupAPI = {
   addMember: (groupId, memberData) => api.post(`/groups/${groupId}/members`, memberData),
   removeMember: (groupId, memberId) => api.delete(`/groups/${groupId}/members/${memberId}`),
   getBalances: (groupId) => api.get(`/groups/${groupId}/balances`),
+  settleExpense: (groupId, settlementData) => api.post(`/groups/${groupId}/expenses/settle`, settlementData),
 };
 
 // Expense API
@@ -67,7 +69,7 @@ export const expenseAPI = {
   createExpense: (groupId, expenseData) => api.post(`/groups/${groupId}/expenses`, expenseData),
   updateExpense: (expenseId, expenseData) => api.put(`/expenses/${expenseId}`, expenseData),
   deleteExpense: (expenseId) => api.delete(`/expenses/${expenseId}`),
-  settleExpense: (groupId, settlementData) => api.post(`/groups/${groupId}/settle`, settlementData),
+  settleExpense: (groupId, settlementData) => api.post(`/groups/${groupId}/expenses/settle`, settlementData),
 };
 
 // Currency API

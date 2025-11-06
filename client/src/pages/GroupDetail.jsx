@@ -61,7 +61,8 @@ const GroupDetail = () => {
   
   const settlements = simplifyDebts(currentGroupBalances);
 
-  const totalSpent = groupExpenses.reduce((sum, exp) => sum + exp.amount, 0);
+  // Use server-calculated totalSpent (excludes settlements)
+  const totalSpent = currentGroup.totalSpent || 0;
   
   // Get user balance from currentGroup members array
   const currentUserMember = currentGroup.members?.find(m => m._id === user._id);
@@ -97,13 +98,6 @@ const GroupDetail = () => {
           </div>
         </div>
         <div className="flex space-x-2">
-          <button
-            onClick={() => dispatch(openModal('addMember'))}
-            className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-          >
-            <Plus className="w-5 h-5" />
-            <span>Add Member</span>
-          </button>
           <button
             onClick={handleDeleteGroup}
             className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
@@ -228,13 +222,7 @@ const GroupDetail = () => {
             {!currentGroup.members || currentGroup.members.length === 0 ? (
               <div className="text-center py-8">
                 <Users className="w-12 h-12 text-gray-400 mx-auto mb-3" />
-                <p className="text-gray-500 mb-4">No members added yet</p>
-                <button
-                  onClick={() => dispatch(openModal('addMember'))}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-                >
-                  Add Members
-                </button>
+                <p className="text-gray-500">No members added yet. Click "Add" button above to add members.</p>
               </div>
             ) : (
               <div className="space-y-3">

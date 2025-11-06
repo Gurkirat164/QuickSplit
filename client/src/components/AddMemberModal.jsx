@@ -1,20 +1,19 @@
 import { useState, useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { X, Mail, User } from "lucide-react";
+import { X, Mail } from "lucide-react";
 import toast from 'react-hot-toast';
 import { addMember } from "../store/slices/groupSlice";
 import { closeModal } from "../store/slices/uiSlice";
+import { authAPI } from "../services/api";
 
 const AddMemberModal = () => {
     const dispatch = useDispatch();
     const { modals } = useSelector((state) => state.ui);
     const { currentGroup } = useSelector((state) => state.groups);
 
-    const [formData, setFormData] = useState({
-        email: "",
-        name: ""
-    });
+    const [email, setEmail] = useState("");
     const [loading, setLoading] = useState(false);
+    const [checkingUser, setCheckingUser] = useState(false);
     const [error, setError] = useState("");
 
     // Prevent body scroll when modal is open
@@ -31,7 +30,20 @@ const AddMemberModal = () => {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        setLoading(true);
+        
+        if (!email.trim()) {
+            toast.error('Please enter an email');
+            return;
+        }
+
+        // Validate email format
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(email)) {
+            toast.error('Please enter a valid email address');
+            return;
+        }
+
+        setCheckingUser(true);
         setError("");
 
         try {
@@ -39,12 +51,29 @@ const AddMemberModal = () => {
                 throw new Error("No group selected");
             }
 
-            // Backend expects just email or userId, not name
+            // Check if user exists in database
+            await authAPI.checkUserExists(email);
+
+            // Check if member already exists in the group
+            const memberExists = currentGroup.members?.some(
+                m => m.email?.toLowerCase() === email.toLowerCase()
+            );
+            
+            if (memberExists) {
+                toast.error('This member is already in the group');
+                setCheckingUser(false);
+                return;
+            }
+
+            setCheckingUser(false);
+            setLoading(true);
+
+            // Add member to group
             await dispatch(
                 addMember({
                     groupId: currentGroup._id,
                     memberData: {
-                        email: formData.email
+                        email: email
                     }
                 })
             ).unwrap();
@@ -52,17 +81,24 @@ const AddMemberModal = () => {
             toast.success('Member added successfully!');
             handleClose();
         } catch (err) {
-            setError(err.message || "Failed to add member");
-            toast.error(err.message || "Failed to add member");
+            if (err.response?.status === 404) {
+                setError('User not found. Please check the email address.');
+                toast.error('User not found. Please check the email address.');
+            } else {
+                setError(err.message || "Failed to add member");
+                toast.error(err.message || "Failed to add member");
+            }
             console.error("Failed to add member:", err);
         } finally {
             setLoading(false);
+            setCheckingUser(false);
         }
     };
 
     const handleClose = () => {
-        setFormData({ email: "", name: "" });
+        setEmail("");
         setError("");
+        setCheckingUser(false);
         dispatch(closeModal("addMember"));
     };
 
@@ -95,10 +131,7 @@ const AddMemberModal = () => {
                     {currentGroup && (
                         <div className="mb-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
                             <p className="text-sm text-gray-600">
-                                Adding member to:
-                            </p>
-                            <p className="font-semibold text-gray-800">
-                                {currentGroup.name}
+                                Adding member to: <span className="font-semibold text-gray-800">{currentGroup.name}</span>
                             </p>
                         </div>
                     )}
@@ -122,44 +155,14 @@ const AddMemberModal = () => {
                             <input
                                 type="email"
                                 required
-                                value={formData.email}
-                                onChange={(e) =>
-                                    setFormData({
-                                        ...formData,
-                                        email: e.target.value
-                                    })
-                                }
-                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                value={email}
+                                onChange={(e) => setEmail(e.target.value)}
+                                disabled={checkingUser || loading}
+                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed"
                                 placeholder="member@example.com"
                             />
                             <p className="mt-1 text-xs text-gray-500">
-                                Enter the email address of the person you want
-                                to add
-                            </p>
-                        </div>
-
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">
-                                <div className="flex items-center space-x-2">
-                                    <User className="w-4 h-4" />
-                                    <span>Name (Optional)</span>
-                                </div>
-                            </label>
-                            <input
-                                type="text"
-                                value={formData.name}
-                                onChange={(e) =>
-                                    setFormData({
-                                        ...formData,
-                                        name: e.target.value
-                                    })
-                                }
-                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                placeholder="Member's name"
-                            />
-                            <p className="mt-1 text-xs text-gray-500">
-                                If not provided, email will be used as the
-                                display name
+                                Enter the email of a registered user to add them to this group
                             </p>
                         </div>
 
@@ -168,16 +171,24 @@ const AddMemberModal = () => {
                             <button
                                 type="button"
                                 onClick={handleClose}
-                                className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+                                disabled={loading || checkingUser}
+                                className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                             >
                                 Cancel
                             </button>
                             <button
                                 type="submit"
-                                disabled={loading}
-                                className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                disabled={loading || checkingUser}
+                                className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
                             >
-                                {loading ? "Adding..." : "Add Member"}
+                                {loading || checkingUser ? (
+                                    <>
+                                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
+                                        {checkingUser ? "Validating..." : "Adding..."}
+                                    </>
+                                ) : (
+                                    "Add Member"
+                                )}
                             </button>
                         </div>
                     </form>
