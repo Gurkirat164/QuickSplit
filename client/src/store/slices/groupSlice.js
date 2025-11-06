@@ -1,22 +1,11 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import { groupAPI } from '../../services/api';
-import { dummyGroups } from '../../data/dummyData';
-
-// Temporary flag - set to false when API is ready
-const USE_DUMMY_DATA = true;
 
 // Async thunks
 export const fetchGroups = createAsyncThunk(
   'groups/fetchGroups',
   async (_, { rejectWithValue }) => {
     try {
-      // Use dummy data if flag is enabled
-      if (USE_DUMMY_DATA) {
-        return new Promise((resolve) => {
-          setTimeout(() => resolve(dummyGroups), 500);
-        });
-      }
-      
       const response = await groupAPI.getGroups();
       return response.data;
     } catch (error) {
@@ -27,30 +16,8 @@ export const fetchGroups = createAsyncThunk(
 
 export const fetchGroupDetails = createAsyncThunk(
   'groups/fetchGroupDetails',
-  async (groupId, { rejectWithValue, getState }) => {
+  async (groupId, { rejectWithValue }) => {
     try {
-      // Use dummy data if flag is enabled
-      if (USE_DUMMY_DATA) {
-        return new Promise((resolve, reject) => {
-          setTimeout(() => {
-            // First check the Redux store for newly created groups
-            const state = getState();
-            let group = state.groups.groups.find(g => g._id === groupId);
-            
-            // If not in Redux, check dummyGroups
-            if (!group) {
-              group = dummyGroups.find(g => g._id === groupId);
-            }
-            
-            if (group) {
-              resolve(group);
-            } else {
-              reject('Group not found');
-            }
-          }, 300);
-        });
-      }
-      
       const response = await groupAPI.getGroupById(groupId);
       return response.data;
     } catch (error) {
@@ -63,24 +30,6 @@ export const createGroup = createAsyncThunk(
   'groups/createGroup',
   async (groupData, { rejectWithValue }) => {
     try {
-      // Use dummy data if flag is enabled
-      if (USE_DUMMY_DATA) {
-        return new Promise((resolve) => {
-          setTimeout(() => {
-            const newGroup = {
-              _id: `group_${Date.now()}`,
-              name: groupData.name,
-              description: groupData.description || '',
-              members: groupData.members || [],
-              createdBy: 'user1',
-              createdAt: new Date().toISOString(),
-              balances: [],
-            };
-            resolve(newGroup);
-          }, 400);
-        });
-      }
-      
       const response = await groupAPI.createGroup(groupData);
       return response.data;
     } catch (error) {
@@ -93,19 +42,6 @@ export const updateGroup = createAsyncThunk(
   'groups/updateGroup',
   async ({ groupId, groupData }, { rejectWithValue }) => {
     try {
-      // Use dummy data if flag is enabled
-      if (USE_DUMMY_DATA) {
-        return new Promise((resolve) => {
-          setTimeout(() => {
-            resolve({
-              _id: groupId,
-              ...groupData,
-              updatedAt: new Date().toISOString(),
-            });
-          }, 300);
-        });
-      }
-      
       const response = await groupAPI.updateGroup(groupId, groupData);
       return response.data;
     } catch (error) {
@@ -118,15 +54,6 @@ export const deleteGroup = createAsyncThunk(
   'groups/deleteGroup',
   async (groupId, { rejectWithValue }) => {
     try {
-      // Use dummy data if flag is enabled
-      if (USE_DUMMY_DATA) {
-        return new Promise((resolve) => {
-          setTimeout(() => {
-            resolve(groupId);
-          }, 300);
-        });
-      }
-      
       await groupAPI.deleteGroup(groupId);
       return groupId;
     } catch (error) {
@@ -139,31 +66,6 @@ export const addMember = createAsyncThunk(
   'groups/addMember',
   async ({ groupId, memberData }, { rejectWithValue }) => {
     try {
-      // Use dummy data if flag is enabled
-      if (USE_DUMMY_DATA) {
-        return new Promise((resolve, reject) => {
-          setTimeout(() => {
-            const group = dummyGroups.find(g => g._id === groupId);
-            if (group) {
-              const updatedGroup = {
-                ...group,
-                members: [
-                  ...group.members,
-                  {
-                    _id: `user_${Date.now()}`,
-                    name: memberData.name || memberData.email,
-                    email: memberData.email,
-                  }
-                ],
-              };
-              resolve(updatedGroup);
-            } else {
-              reject('Group not found');
-            }
-          }, 300);
-        });
-      }
-      
       const response = await groupAPI.addMember(groupId, memberData);
       return response.data;
     } catch (error) {
@@ -176,24 +78,6 @@ export const removeMember = createAsyncThunk(
   'groups/removeMember',
   async ({ groupId, memberId }, { rejectWithValue }) => {
     try {
-      // Use dummy data if flag is enabled
-      if (USE_DUMMY_DATA) {
-        return new Promise((resolve, reject) => {
-          setTimeout(() => {
-            const group = dummyGroups.find(g => g._id === groupId);
-            if (group) {
-              const updatedGroup = {
-                ...group,
-                members: group.members.filter(m => m._id !== memberId),
-              };
-              resolve(updatedGroup);
-            } else {
-              reject('Group not found');
-            }
-          }, 300);
-        });
-      }
-      
       const response = await groupAPI.removeMember(groupId, memberId);
       return response.data;
     } catch (error) {
@@ -206,17 +90,6 @@ export const fetchBalances = createAsyncThunk(
   'groups/fetchBalances',
   async (groupId, { rejectWithValue }) => {
     try {
-      // Use dummy data if flag is enabled
-      if (USE_DUMMY_DATA) {
-        return new Promise((resolve) => {
-          setTimeout(() => {
-            const group = dummyGroups.find(g => g._id === groupId);
-            const balances = group?.balances || [];
-            resolve({ groupId, balances });
-          }, 300);
-        });
-      }
-      
       const response = await groupAPI.getBalances(groupId);
       return { groupId, balances: response.data };
     } catch (error) {

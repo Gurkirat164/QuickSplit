@@ -44,12 +44,11 @@ function App() {
     <Router>
       <div className="App">
         <Routes>
-          {/* Public Routes - Redirect to Dashboard (Bypass Login) */}
-          <Route path="/login" element={<Navigate to="/dashboard" replace />} />
-          <Route path="/register" element={<Navigate to="/dashboard" replace />} />
-          <Route path="/temp-user" element={<Navigate to="/dashboard" replace />} />
+          {/* Public Routes */}
+          <Route path="/login" element={<Login />} />
+          <Route path="/register" element={<Register />} />
 
-          {/* Protected Routes - Now Unprotected for Development */}
+          {/* Protected Routes */}
           <Route path="/" element={<Layout />}>
             <Route index element={<Navigate to="/dashboard" replace />} />
             <Route path="dashboard" element={<Dashboard />} />

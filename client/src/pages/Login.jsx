@@ -51,7 +51,7 @@ const Login = () => {
     e.preventDefault();
     try {
       await dispatch(login(formData)).unwrap();
-      navigate('/temp-user');
+      navigate('/dashboard');
     } catch (err) {
       console.error('Login failed:', err);
     }

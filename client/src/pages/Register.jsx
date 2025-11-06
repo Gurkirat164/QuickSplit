@@ -90,7 +90,7 @@ const Register = () => {
         email: formData.email,
         password: formData.password,
       })).unwrap();
-      navigate('/temp-user');
+      navigate('/dashboard');
     } catch (err) {
       console.error('Registration failed:', err);
     }
