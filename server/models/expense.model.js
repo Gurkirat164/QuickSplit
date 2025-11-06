@@ -36,7 +36,6 @@ const expenseSchema = new Schema(
         },
         description: {
             type: String,
-            required: [true, "Expense description is required"],
             trim: true,
             maxlength: [200, "Description cannot exceed 200 characters"]
         },

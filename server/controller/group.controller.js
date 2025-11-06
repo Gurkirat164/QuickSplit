@@ -51,7 +51,6 @@ const getGroups = asyncHandler(async (req, res) => {
                 )
             );
     } catch (error) {
-        console.error("Error in fetching groups:", error.message);
         return res
             .status(error.statusCode || 500)
             .json(
@@ -117,7 +116,6 @@ const getGroupById = asyncHandler(async (req, res) => {
                 )
             );
     } catch (error) {
-        console.error("Error in fetching group:", error.message);
         return res
             .status(error.statusCode || 500)
             .json(
@@ -219,7 +217,6 @@ const createGroup = asyncHandler(async (req, res) => {
                 )
             );
     } catch (error) {
-        console.error("Error in creating group:", error.message);
         return res
             .status(error.statusCode || 500)
             .json(
@@ -359,11 +356,6 @@ const addMember = asyncHandler(async (req, res) => {
         const { email, userId: newUserId } = req.body;
         const userId = req.user._id;
 
-        console.log('Add Member - Debug:');
-        console.log('GroupId from params:', req.params.groupId);
-        console.log('GroupId from req:', req.groupId);
-        console.log('Final groupId used:', groupId);
-
         if (!groupId || groupId === 'undefined') {
             throw new ApiError(400, "Invalid group ID provided");
         }
@@ -390,7 +382,7 @@ const addMember = asyncHandler(async (req, res) => {
         }
 
         if (!userToAdd) {
-            throw new ApiError(404, "User not found");
+            throw new ApiError(404, "User not registered");
         }
 
         // Check if user is already a member
@@ -459,12 +451,6 @@ const removeMember = asyncHandler(async (req, res) => {
         const groupId = req.params.groupId || req.groupId;
         const { memberId } = req.params;
         const userId = req.user._id;
-
-        console.log('Remove Member - Debug:');
-        console.log('GroupId from params:', req.params.groupId);
-        console.log('GroupId from req:', req.groupId);
-        console.log('Final groupId used:', groupId);
-        console.log('MemberId:', memberId);
 
         if (!groupId || groupId === 'undefined') {
             throw new ApiError(400, "Invalid group ID provided");

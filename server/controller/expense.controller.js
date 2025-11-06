@@ -11,15 +11,6 @@ const getExpenses = asyncHandler(async (req, res) => {
         const groupId = req.params.groupId || req.groupId; // Try both sources
         const userId = req.user._id;
 
-        console.log("\nExpense Controller - getExpenses:");
-        console.log("Full URL:", req.originalUrl);
-        console.log("Method:", req.method);
-        console.log("All Params:", JSON.stringify(req.params, null, 2));
-        console.log("GroupId from params:", req.params.groupId);
-        console.log("GroupId from req object:", req.groupId);
-        console.log("Final groupId used:", groupId);
-        console.log("UserId:", userId);
-
         if (!groupId || groupId === "undefined" || groupId === ":groupId") {
             throw new ApiError(400, "Invalid group ID provided");
         }
@@ -28,26 +19,17 @@ const getExpenses = asyncHandler(async (req, res) => {
             .populate("members.userId")
             .populate("createdBy");
 
-        console.log("Found group:", group ? "Yes" : "No");
-        if (group) {
-            console.log("Group ID:", group._id);
-            console.log("Group members count:", group.members?.length || 0);
-        }
-
         if (!group) {
             throw new ApiError(404, "Group not found");
         }
 
         // Check if user is a member
-        console.log("Checking membership for user:", userId);
         const isMember = group.isMember(userId);
-        console.log("Is user a member?", isMember);
 
         if (!isMember) {
             throw new ApiError(403, "You are not a member of this group");
         }
 
-        console.log("About to fetch expenses for group:", groupId);
         const expenses = await Expense.getGroupExpenses(groupId);
 
         // Transform expenses to match client structure
@@ -175,7 +157,7 @@ const getExpenseById = asyncHandler(async (req, res) => {
 // Create a new expense
 const createExpense = asyncHandler(async (req, res) => {
     try {
-        const { groupId } = req.params;
+        const groupId = req.params.groupId || req.groupId;
         const {
             description,
             amount,
@@ -189,6 +171,19 @@ const createExpense = asyncHandler(async (req, res) => {
             notes
         } = req.body;
         const userId = req.user._id;
+
+        console.log('\nExpense Controller - createExpense:');
+        console.log('Full URL:', req.originalUrl);
+        console.log('Method:', req.method);
+        console.log('All Params:', JSON.stringify(req.params, null, 2));
+        console.log('GroupId from params:', req.params.groupId);
+        console.log('GroupId from req object:', req.groupId);
+        console.log('Final groupId used:', groupId);
+        console.log("Request Body:", req.body);
+
+        if (!groupId || groupId === 'undefined' || groupId === ':groupId') {
+            throw new ApiError(400, "Invalid group ID provided");
+        }
 
         // Validate required fields
         if (!description || !amount) {
@@ -469,9 +464,21 @@ const deleteExpense = asyncHandler(async (req, res) => {
 // Settle an expense (create a settlement payment)
 const settleExpense = asyncHandler(async (req, res) => {
     try {
-        const { groupId } = req.params;
+        const groupId = req.params.groupId || req.groupId;
         const { from, to, amount, currency, description } = req.body;
         const userId = req.user._id;
+
+        console.log('\nExpense Controller - settleExpense:');
+        console.log('Full URL:', req.originalUrl);
+        console.log('Method:', req.method);
+        console.log('All Params:', JSON.stringify(req.params, null, 2));
+        console.log('GroupId from params:', req.params.groupId);
+        console.log('GroupId from req object:', req.groupId);
+        console.log('Final groupId used:', groupId);
+
+        if (!groupId || groupId === 'undefined' || groupId === ':groupId') {
+            throw new ApiError(400, "Invalid group ID provided");
+        }
 
         // Validate required fields
         if (!from || !to || !amount) {

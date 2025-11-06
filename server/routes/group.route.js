@@ -33,11 +33,10 @@ router.use("/:groupId/members", (req, res, next) => {
     req.groupId = groupId;
     
     // Create a member-specific router
-    const memberRouter = Router();
+    const memberRouter = Router({ mergeParams: true });
     
-    // Ensure groupId is available in all member routes
+    // Member router middleware
     memberRouter.use((req, _, next) => {
-        req.params.groupId = groupId;
         next();
     });
 
@@ -55,24 +54,25 @@ router.use("/:groupId/members", (req, res, next) => {
 // Balance routes
 router.route("/:groupId/balances").get(getBalances);
 
-// Middleware to ensure groupId is available in the expense routes
+// Expense routes with parameter preservation
 router.use("/:groupId/expenses", (req, res, next) => {
     // Store groupId in both params and a custom property
     const groupId = req.params.groupId;
     req.groupId = groupId;
     
     // Create a new router just for this group's expenses
-    const groupSpecificRouter = Router();
-    groupSpecificRouter.use((req, _, next) => {
-        req.params.groupId = groupId;
+    const expenseRouter = Router({ mergeParams: true });
+    
+    // Expense router middleware
+    expenseRouter.use((req, _, next) => {
         next();
     });
     
     // Mount the expense router on this specific router
-    groupSpecificRouter.use("/", groupExpenseRouter);
+    expenseRouter.use("/", groupExpenseRouter);
     
     // Use the specific router
-    groupSpecificRouter(req, res, next);
+    expenseRouter(req, res, next);
 });
 
 export default router;
