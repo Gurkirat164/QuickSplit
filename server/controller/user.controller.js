@@ -1,7 +1,7 @@
-import { User } from "../models/user.model";
-import { ApiError } from "../utils/ApiError";
-import { ApiResponse } from "../utils/ApiResponse";
-import { asyncHandler } from "../utils/asyncHandler";
+import { User } from "../models/user.model.js";
+import { ApiError } from "../utils/ApiError.js";
+import { ApiResponse } from "../utils/ApiResponse.js";
+import { asyncHandler } from "../utils/asyncHandler.js";
 import jwt from "jsonwebtoken";
 
 const generateAccessRefreshTokens = async (userID) => {
@@ -26,58 +26,50 @@ const registerUser = asyncHandler(async (req, res) => {
     try {
         const { fullName, email, password, confirmPassword } = req.body;
 
+        console.log(req.body);
+
         if (!fullName || !email || !password || !confirmPassword) {
-            return res
-                .status(400)
-                .json(new ApiError(400, "All fields are required"));
+            throw new ApiError(400, "All fields are required");
         }
 
         if (password !== confirmPassword) {
-            return res
-                .status(400)
-                .json(new ApiError(400, "Passwords do not match"));
+            throw new ApiError(400, "Passwords do not match");
         }
 
-        // Registration logic will go here
         const checkUserExists = await User.findOne({
-            $or: [{ email: email.toLowerCase() }]
+            email: email.toLowerCase()
         });
 
         if (checkUserExists) {
-            return res
-                .status(409)
-                .json(new ApiError(409, "User with this email already exists"));
+            throw new ApiError(409, "User with this email already exists");
         }
 
-        const newUser = new User.create({
+        const newUser = new User({
             fullName,
             email: email.toLowerCase(),
             password,
             username: email.split("@")[0]
         });
 
-        const isCreated = newUser.toObject();
-        delete isCreated.password;
-        delete isCreated.refreshToken;
+        await newUser.save(); // ✅ pre('save') runs here
 
-        if (!isCreated)
-            throw new ApiErrors(
-                500,
-                "Something went wrong in uploading the data."
-            );
+        const userObj = newUser.toObject();
+        delete userObj.password;
+        delete userObj.refreshToken;
 
         return res
             .status(201)
             .json(
-                new ApiResponse(isCreated, 201, "User registered successfully")
+                new ApiResponse(userObj, 201, "User registered successfully")
             );
     } catch (error) {
+        console.error("Error in User Registration: ", error.message);
         return res
             .status(error.statusCode || 500)
             .json(
                 new ApiError(
                     error.statusCode || 500,
-                    "Internal Server Error",
+                    error.message || "Internal Server Error",
                     error
                 )
             );
@@ -89,28 +81,23 @@ const loginUser = asyncHandler(async (req, res) => {
         const { email, password } = req.body;
 
         if (!email || !password) {
-            return res
-                .status(400)
-                .json(new ApiError(400, "Email and Password are required"));
+            throw new ApiError(400, "Email and Password are required");
         }
 
-        const user = await User.findOne({ email: email.toLowerCase() });
-
+        const user = await User.findOne({ email });
+        console.log(user);
         if (!user) {
-            return res
-                .status(401)
-                .json(new ApiError(401, "Invalid email or password"));
+            throw new ApiError(401, "Invalid email or password");
         }
 
         const isPasswordValid = await user.comparePassword(password);
         if (!isPasswordValid) {
-            return res
-                .status(401)
-                .json(new ApiError(401, "Invalid email or password"));
+            throw new ApiError(401, "Invalid email or password");
         }
 
-        const { accessToken, refreshToken } =
-            await user.generateAccessRefreshTokens(user._id);
+        const { accessToken, refreshToken } = await generateAccessRefreshTokens(
+            user._id
+        );
 
         const options = {
             httpOnly: true,
@@ -136,6 +123,7 @@ const loginUser = asyncHandler(async (req, res) => {
                 )
             );
     } catch (error) {
+        console.error("Error in User Login: ", error.message);
         return res
             .status(error.statusCode || 500)
             .json(
@@ -241,7 +229,6 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
                 new ApiResponse(null, error.statusCode || 500, error.message)
             );
     }
-
 });
 
 export { registerUser, loginUser, logoutUser };

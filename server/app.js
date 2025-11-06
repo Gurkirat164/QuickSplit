@@ -1,5 +1,6 @@
 import express from "express";
 import cookies from "cookie-parser";
+import cors from "cors";
 
 const app = express();
 
@@ -11,6 +12,23 @@ app.use(
     })
 );
 
+const allowedOrigins = [process.env.CORS_ORIGIN];
+
+app.use(
+    cors({
+        credentials: true,
+        origin: (origin, callback) => {
+            if (allowedOrigins.includes(origin) || !origin) {
+                callback(null, true);
+            } else {
+                callback(new Error("Not allowed by CORS"));
+            }
+        }
+    })
+);
+
+app.use(cookies());
+
 app.use(
     express.json({
         limit: "16kb"
@@ -20,6 +38,6 @@ app.use(
 app.use(express.static("public/temp"));
 
 import userRoute from "./routes/user.route.js";
-app.use("/api/v1/users", cookies(), userRoute);
+app.use("/api/v1/users", userRoute);
 
 export { app };

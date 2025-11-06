@@ -1,5 +1,6 @@
 import { model, Schema } from "mongoose";
 import bcrypt from "bcryptjs";
+import jsonwebtoken from "jsonwebtoken";
 
 const userSchema = new Schema(
     {
@@ -24,8 +25,7 @@ const userSchema = new Schema(
         password: {
             type: String,
             required: [true, "Password is required."],
-            minlength: [6, "Password must be at least 6 characters long."],
-            select: false
+            minlength: [6, "Password must be at least 6 characters long."]
         },
         refreshToken: {
             type: String
@@ -43,7 +43,7 @@ userSchema.pre("save", async function (next) {
 });
 
 userSchema.methods.comparePassword = async function (candidatePassword) {
-    return bcrypt.compare(candidatePassword, this.password);
+    return await bcrypt.compare(candidatePassword, this.password);
 };
 
 //generate access tokens using jwt.
