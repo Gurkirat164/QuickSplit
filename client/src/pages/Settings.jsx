@@ -20,7 +20,6 @@ const Settings = () => {
     name: '',
     email: '',
     username: '',
-    defaultCurrency: 'USD',
   });
 
   const [passwordData, setPasswordData] = useState({
@@ -34,8 +33,6 @@ const Settings = () => {
     new: false,
     confirm: false,
   });
-
-  const currencies = ['USD', 'EUR', 'GBP', 'INR', 'CAD', 'AUD', 'JPY'];
 
   // Fetch user profile from server
   useEffect(() => {
@@ -297,23 +294,6 @@ const Settings = () => {
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-500 cursor-not-allowed"
                   />
                   <p className="text-xs text-gray-500 mt-1">Username cannot be changed</p>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Default Currency
-                  </label>
-                  <select
-                    value={formData.defaultCurrency}
-                    onChange={(e) => setFormData({ ...formData, defaultCurrency: e.target.value })}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  >
-                    {currencies.map((currency) => (
-                      <option key={currency} value={currency}>
-                        {currency}
-                      </option>
-                    ))}
-                  </select>
                 </div>
               </div>
             </div>

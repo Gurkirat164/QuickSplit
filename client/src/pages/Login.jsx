@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { Link, useNavigate } from 'react-router-dom';
+import { Eye, EyeOff } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { login, clearError } from '../store/slices/authSlice';
 
@@ -13,6 +14,8 @@ const Login = () => {
     email: '',
     password: '',
   });
+
+  const [showPassword, setShowPassword] = useState(false);
 
   // Clear error when component unmounts or when navigating away
   useEffect(() => {
@@ -112,18 +115,27 @@ const Login = () => {
               <label htmlFor="password" className="block text-sm font-medium text-gray-400 mb-2">
                 Password
               </label>
-              <input
-                id="password"
-                name="password"
-                type="password"
-                required
-                value={formData.password}
-                onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                className={`appearance-none relative block w-full px-4 py-3 border ${
-                  getFieldError('password') ? 'border-red-500 focus:ring-red-500' : 'border-gray-600 focus:ring-cyan-500'
-                } bg-gray-700/50 rounded-lg placeholder-gray-500 text-white focus:outline-none focus:ring-2 focus:border-transparent focus:bg-gray-700 transition-all`}
-                placeholder="••••••••"
-              />
+              <div className="relative">
+                <input
+                  id="password"
+                  name="password"
+                  type={showPassword ? 'text' : 'password'}
+                  required
+                  value={formData.password}
+                  onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                  className={`appearance-none relative block w-full px-4 py-3 pr-12 border ${
+                    getFieldError('password') ? 'border-red-500 focus:ring-red-500' : 'border-gray-600 focus:ring-cyan-500'
+                  } bg-gray-700/50 rounded-lg placeholder-gray-500 text-white focus:outline-none focus:ring-2 focus:border-transparent focus:bg-gray-700 transition-all`}
+                  placeholder="••••••••"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-300 transition-colors"
+                >
+                  {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                </button>
+              </div>
               {getFieldError('password') && (
                 <p className="mt-2 text-sm text-red-400 flex items-center">
                   <span className="mr-1">⚠</span> {getFieldError('password')}
