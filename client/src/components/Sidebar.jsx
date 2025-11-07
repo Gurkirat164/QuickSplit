@@ -12,8 +12,15 @@ const Sidebar = () => {
   const { groups } = useSelector((state) => state.groups);
 
   const handleLogout = async () => {
-    await dispatch(logoutUser());
-    navigate('/login');
+    try {
+      await dispatch(logoutUser()).unwrap();
+      // Navigate to login after successful logout
+      navigate('/login', { replace: true });
+    } catch (error) {
+      console.error('Logout error:', error);
+      // Even if logout fails, navigate to login
+      navigate('/login', { replace: true });
+    }
   };
 
   const navLinks = [

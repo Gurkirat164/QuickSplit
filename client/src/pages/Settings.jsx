@@ -190,8 +190,8 @@ const Settings = () => {
         // Wait a moment for user to see the success message
         setTimeout(async () => {
           // Logout and redirect to login
-          await dispatch(logoutUser());
-          navigate('/login');
+          await dispatch(logoutUser()).unwrap();
+          navigate('/login', { replace: true });
         }, 1500);
       }
     } catch (error) {

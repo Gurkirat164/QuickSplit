@@ -36,15 +36,18 @@ const GroupDetail = () => {
   const dispatch = useDispatch();
   const [activeTab, setActiveTab] = useState('expenses'); // 'expenses', 'chat', or 'gallery'
   
-  const { currentGroup, balances, settlements: groupSettlements, loading } = useSelector((state) => state.groups);
+  const { currentGroup, balances, settlements: groupSettlements, loading, error } = useSelector((state) => state.groups);
   const { expensesByGroup } = useSelector((state) => state.expenses);
   const { images: galleryImages } = useSelector((state) => state.gallery);
   const { user } = useSelector((state) => state.auth);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     if (groupId) {
       // Clear the previous group data first to avoid stale data
       dispatch(clearCurrentGroup());
+      setIsLoading(true);
+      
       dispatch(fetchGroupDetails(groupId))
         .unwrap()
         .then(() => {
@@ -58,17 +61,45 @@ const GroupDetail = () => {
           dispatch(fetchGallery(groupId)).catch(err => {
             console.error('Failed to fetch gallery:', err);
           });
+          setIsLoading(false);
         })
         .catch(err => {
           console.error('Failed to fetch group details:', err);
+          toast.error(err || 'Failed to load group details');
+          setIsLoading(false);
+          // Redirect to groups page after a short delay
+          setTimeout(() => {
+            navigate('/groups');
+          }, 2000);
         });
     }
-  }, [dispatch, groupId]);
+  }, [dispatch, groupId, navigate]);
 
-  if (loading || !currentGroup) {
+  // Show loading state
+  if (isLoading || loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      <div className="flex items-center justify-center h-screen">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-blue-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600 font-medium">Loading group details...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Show error state if group failed to load
+  if (!currentGroup) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <div className="text-center">
+          <div className="text-red-500 mb-4">
+            <svg className="w-16 h-16 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            </svg>
+          </div>
+          <h2 className="text-xl font-bold text-gray-900 mb-2">Group Not Found</h2>
+          <p className="text-gray-600 mb-4">Redirecting to groups page...</p>
+        </div>
       </div>
     );
   }

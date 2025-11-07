@@ -8,7 +8,7 @@ import { login, clearError } from '../store/slices/authSlice';
 const Login = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
-  const { loading, error } = useSelector((state) => state.auth);
+  const { loading, error, isAuthenticated } = useSelector((state) => state.auth);
   
   const [formData, setFormData] = useState({
     email: '',
@@ -16,6 +16,13 @@ const Login = () => {
   });
 
   const [showPassword, setShowPassword] = useState(false);
+
+  // Redirect if already authenticated
+  useEffect(() => {
+    if (isAuthenticated) {
+      navigate('/dashboard', { replace: true });
+    }
+  }, [isAuthenticated, navigate]);
 
   // Clear error when component unmounts or when navigating away
   useEffect(() => {
@@ -56,7 +63,7 @@ const Login = () => {
     try {
       await dispatch(login(formData)).unwrap();
       toast.success('Login successful!');
-      navigate('/dashboard');
+      navigate('/dashboard', { replace: true });
     } catch (err) {
       console.error('Login failed:', err);
       // Toast for error is shown via field-specific errors in UI

@@ -5,9 +5,16 @@ const ProtectedRoute = ({ children }) => {
   const { token, isAuthenticated, loading } = useSelector((state) => state.auth);
   const location = useLocation();
 
-  // If still loading, you might want to show a loading spinner
+  // If still loading, show a proper loading spinner
   if (loading) {
-    return <div>Loading...</div>;
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-blue-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600 font-medium">Loading...</p>
+        </div>
+      </div>
+    );
   }
 
   // If not authenticated and not loading, redirect to login

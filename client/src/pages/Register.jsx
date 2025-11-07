@@ -8,7 +8,7 @@ import { register, clearError } from '../store/slices/authSlice';
 const Register = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
-  const { loading, error } = useSelector((state) => state.auth);
+  const { loading, error, isAuthenticated } = useSelector((state) => state.auth);
   
   const [formData, setFormData] = useState({
     name: '',
@@ -20,6 +20,13 @@ const Register = () => {
   const [validationField, setValidationField] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+
+  // Redirect if already authenticated
+  useEffect(() => {
+    if (isAuthenticated) {
+      navigate('/dashboard', { replace: true });
+    }
+  }, [isAuthenticated, navigate]);
 
   // Clear errors when component unmounts or when navigating away
   useEffect(() => {
@@ -96,7 +103,7 @@ const Register = () => {
         confirmPassword: formData.confirmPassword,
       })).unwrap();
       toast.success('Account created successfully!');
-      navigate('/dashboard');
+      navigate('/dashboard', { replace: true });
     } catch (err) {
       console.error('Registration failed:', err);
       // Toast for error is shown via field-specific errors in UI
