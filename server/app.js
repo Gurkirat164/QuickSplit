@@ -13,14 +13,21 @@ app.use(
 );
 
 // CORS configuration
+// NOTE: If CORS_ORIGIN is not set we default to allowing all origins.
+// In production you should set CORS_ORIGIN to a comma-separated list or '*'.
 const corsOptions = {
     credentials: true,
     origin: function (origin, callback) {
         // Allow requests with no origin (like mobile apps, Postman, or same-origin)
         if (!origin) return callback(null, true);
 
-        // If CORS_ORIGIN is *, allow all origins (development only!)
+        // If CORS_ORIGIN is explicitly '*', allow all origins
         if (process.env.CORS_ORIGIN === "*") {
+            return callback(null, true);
+        }
+
+        // If no CORS_ORIGIN is configured, allow all origins by default
+        if (!process.env.CORS_ORIGIN) {
             return callback(null, true);
         }
 
@@ -57,6 +64,8 @@ import chatRoute from "./routes/chat.route.js";
 // API routes
 app.use("/api/v1/users", userRoute);
 app.use("/api/auth", userRoute); // Also expose on /api/auth for client compatibility
+// Backwards-compatible alias: expose auth routes at /auth as well
+app.use("/auth", userRoute);
 app.use("/api/groups", groupRoute);
 app.use("/api/expenses", expenseRoute);
 app.use("/api/chat", chatRoute);
