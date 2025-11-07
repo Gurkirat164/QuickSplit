@@ -15,6 +15,28 @@ export const fetchExpenses = createAsyncThunk(
   }
 );
 
+export const fetchAllExpenses = createAsyncThunk(
+  'expenses/fetchAllExpenses',
+  async (groupIds, { rejectWithValue }) => {
+    try {
+      const expensePromises = groupIds.map(async (groupId) => {
+        try {
+          const response = await expenseAPI.getExpenses(groupId);
+          return { groupId, expenses: response.data.payload };
+        } catch (error) {
+          console.error(`Failed to fetch expenses for group ${groupId}:`, error);
+          return { groupId, expenses: [] };
+        }
+      });
+      
+      const results = await Promise.all(expensePromises);
+      return results;
+    } catch (error) {
+      return rejectWithValue(error.message || 'Failed to fetch all expenses');
+    }
+  }
+);
+
 export const createExpense = createAsyncThunk(
   'expenses/createExpense',
   async ({ groupId, expenseData }, { rejectWithValue, dispatch }) => {
@@ -88,6 +110,21 @@ const expenseSlice = createSlice({
         state.expensesByGroup[action.payload.groupId] = action.payload.expenses;
       })
       .addCase(fetchExpenses.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+      })
+      // Fetch all expenses
+      .addCase(fetchAllExpenses.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(fetchAllExpenses.fulfilled, (state, action) => {
+        state.loading = false;
+        action.payload.forEach(({ groupId, expenses }) => {
+          state.expensesByGroup[groupId] = expenses;
+        });
+      })
+      .addCase(fetchAllExpenses.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload;
       })

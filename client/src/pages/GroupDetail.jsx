@@ -8,6 +8,7 @@ import { fetchExpenses, setSelectedExpense } from '../store/slices/expenseSlice'
 import { openModal } from '../store/slices/uiSlice';
 import { formatCurrency, formatDate, getRelativeTime } from '../utils/helpers';
 import ChatRoom from '../components/ChatRoom';
+import { CategoryPieChart, MonthlyLineChart } from '../components/Charts';
 
 // Category icon mapping
 const categoryIcons = {
@@ -218,6 +219,11 @@ const GroupDetail = () => {
           {/* Tab Content */}
           {activeTab === 'expenses' ? (
             <div className="p-6">
+              {/* Charts for group */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
+                <CategoryPieChart expenses={groupExpenses} />
+                <MonthlyLineChart expenses={groupExpenses} />
+              </div>
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-xl font-bold text-gray-900">Expenses</h2>
                 <button
