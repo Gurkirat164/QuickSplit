@@ -57,6 +57,16 @@ export const CategoryPieChart = ({ expenses = [] }) => {
     ],
   };
 
+  const options = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: {
+        position: 'bottom',
+      },
+    },
+  };
+
   return (
     <div className="bg-white rounded-xl shadow-sm p-4 border border-gray-100">
       <h3 className="text-lg font-semibold text-gray-900 mb-3">Spending by Category</h3>
@@ -64,7 +74,7 @@ export const CategoryPieChart = ({ expenses = [] }) => {
         <p className="text-gray-500">No data to display</p>
       ) : (
         <div className="h-64">
-          <Pie data={chartData} />
+          <Pie data={chartData} options={options} />
         </div>
       )}
     </div>
@@ -111,7 +121,13 @@ export const MonthlyLineChart = ({ expenses = [] }) => {
   };
 
   const options = {
-    plugins: { legend: { display: false } },
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: { 
+      legend: { 
+        display: false 
+      } 
+    },
     scales: {
       y: { beginAtZero: true }
     }
