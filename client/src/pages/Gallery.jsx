@@ -4,7 +4,6 @@ import { useParams } from 'react-router-dom';
 import { Image as ImageIcon } from 'lucide-react';
 import { fetchGallery } from '../store/slices/gallerySlice';
 import UploadButton from '../components/UploadButton';
-import ProgressBar from '../components/ProgressBar';
 import FilterByTimestamp from '../components/FilterByTimestamp';
 import GalleryGrid from '../components/GalleryGrid';
 
@@ -54,9 +53,6 @@ const Gallery = () => {
         </div>
         <UploadButton groupId={groupId} />
       </div>
-
-      {/* Upload Progress */}
-      <ProgressBar />
 
       {/* Filter */}
       <FilterByTimestamp />

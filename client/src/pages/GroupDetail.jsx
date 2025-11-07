@@ -10,7 +10,6 @@ import { openModal } from '../store/slices/uiSlice';
 import { formatCurrency, formatDate, getRelativeTime } from '../utils/helpers';
 import ChatRoom from '../components/ChatRoom';
 import UploadButton from '../components/UploadButton';
-import ProgressBar from '../components/ProgressBar';
 import FilterByTimestamp from '../components/FilterByTimestamp';
 import GalleryGrid from '../components/GalleryGrid';
 import { CategoryPieChart, MonthlyLineChart } from '../components/Charts';
@@ -314,7 +313,6 @@ const GroupDetail = () => {
                 </h2>
                 <UploadButton groupId={groupId} />
               </div>
-              <ProgressBar />
               <FilterByTimestamp />
               {galleryImages?.length === 0 ? (
                 <div className="text-center py-12">
