@@ -2,7 +2,8 @@ import { useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { Receipt, Filter, Search, Calendar, UtensilsCrossed, Car, Film, ShoppingBag, Home, Zap, Heart, Plane, GraduationCap, Dumbbell, ArrowRightLeft, MoreHorizontal } from 'lucide-react';
 import { fetchGroups } from '../store/slices/groupSlice';
-import { setSelectedExpense } from '../store/slices/expenseSlice';
+import { CategoryPieChart, MonthlyLineChart } from '../components/Charts';
+import { setSelectedExpense, fetchAllExpenses } from '../store/slices/expenseSlice';
 import { openModal } from '../store/slices/uiSlice';
 import { formatCurrency, getRelativeTime } from '../utils/helpers';
 
@@ -30,6 +31,14 @@ const AllExpenses = () => {
   useEffect(() => {
     dispatch(fetchGroups());
   }, [dispatch]);
+
+  // Fetch expenses for all groups when groups are loaded
+  useEffect(() => {
+    if (groups.length > 0) {
+      const groupIds = groups.map(group => group._id);
+      dispatch(fetchAllExpenses(groupIds));
+    }
+  }, [dispatch, groups]);
 
   // Flatten all expenses
   const allExpenses = Object.values(expensesByGroup)
@@ -76,6 +85,12 @@ const AllExpenses = () => {
             />
           </div>
         </div>
+      </div>
+
+      {/* Charts */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <CategoryPieChart expenses={allExpenses} />
+        <MonthlyLineChart expenses={allExpenses} />
       </div>
 
       {/* Expenses List */}
