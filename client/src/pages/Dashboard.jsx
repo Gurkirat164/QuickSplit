@@ -227,28 +227,6 @@ const Dashboard = () => {
           )}
         </div>
       </div>
-
-      {/* Quick Actions */}
-      <div className="bg-linear-to-r from-blue-500 to-purple-600 rounded-xl shadow-lg p-6 text-white">
-        <h2 className="text-2xl font-bold mb-4">Quick Actions</h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <button className="bg-white bg-opacity-20 hover:bg-opacity-30 transition-all rounded-lg p-4 text-left backdrop-blur-sm">
-            <Users className="w-8 h-8 mb-2" />
-            <p className="font-semibold">Create Group</p>
-            <p className="text-sm opacity-90 mt-1">Start a new expense group</p>
-          </button>
-          <button className="bg-white bg-opacity-20 hover:bg-opacity-30 transition-all rounded-lg p-4 text-left backdrop-blur-sm">
-            <Receipt className="w-8 h-8 mb-2" />
-            <p className="font-semibold">Add Expense</p>
-            <p className="text-sm opacity-90 mt-1">Record a new expense</p>
-          </button>
-          <button className="bg-white bg-opacity-20 hover:bg-opacity-30 transition-all rounded-lg p-4 text-left backdrop-blur-sm">
-            <DollarSign className="w-8 h-8 mb-2" />
-            <p className="font-semibold">Settle Up</p>
-            <p className="text-sm opacity-90 mt-1">Pay your balances</p>
-          </button>
-        </div>
-      </div>
     </div>
   );
 };

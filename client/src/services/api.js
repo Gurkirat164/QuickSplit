@@ -49,6 +49,13 @@ export const authAPI = {
   checkUserExists: (email) => api.get('/auth/check', { params: { email } }),
 };
 
+// User API
+export const userAPI = {
+  getProfile: () => api.get('/auth/me'),
+  updateProfile: (userData) => api.put('/auth/profile', userData),
+  changePassword: (passwordData) => api.post('/auth/change-password', passwordData),
+};
+
 // Group API
 export const groupAPI = {
   getGroups: () => api.get('/groups'),
