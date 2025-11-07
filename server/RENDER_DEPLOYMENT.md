@@ -104,3 +104,58 @@ Vercel creates unique URLs for each branch/PR. Options:
 - Rotate `ACCESS_TOKEN_SECRET` and `REFRESH_TOKEN_SECRET` periodically
 - Set `NODE_ENV=production` on Render
 - Only whitelist your production frontend origin(s)
+
+---
+
+## 🍪 Cookie Configuration for Cross-Site Requests
+
+### Issue: "Cookie has been rejected because it is in a cross-site context"
+When your frontend (Vercel) and backend (Render) are on different domains, browsers block cookies with `SameSite=Lax` or `SameSite=Strict`.
+
+### ✅ Solution Applied
+Updated `server/controller/user.controller.js` to set cookies with:
+- `sameSite: "none"` in production (allows cross-site cookies)
+- `secure: true` in production (required with SameSite=none)
+- `sameSite: "lax"` in development (localhost works fine)
+
+**Cookie options now:**
+```javascript
+const options = {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",  // true in production
+    sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",  // "none" in production
+    maxAge: 7 * 24 * 60 * 60 * 1000,
+    path: "/"
+};
+```
+
+### ⚠️ Critical Requirement
+**You MUST set `NODE_ENV=production` on Render** for this to work!
+
+If `NODE_ENV` is not set to `production`:
+- Cookies will use `sameSite: "lax"` 
+- Browsers will reject them in cross-site requests
+- You'll see the error: "Cookie has been rejected because it is in a cross-site context"
+
+### How Cookies Work Now
+1. **Development (localhost):** Uses `sameSite: "lax"`, `secure: false` - works fine for same-origin
+2. **Production (cross-site):** Uses `sameSite: "none"`, `secure: true` - allows Vercel → Render cookie transmission
+
+### Verify Cookies Are Set Correctly
+After deployment, open DevTools → Network → Login request → Response Headers:
+
+```
+Set-Cookie: accessToken=...; Path=/; HttpOnly; Secure; SameSite=None
+Set-Cookie: refreshToken=...; Path=/; HttpOnly; Secure; SameSite=None
+```
+
+If you see `SameSite=Lax` instead of `SameSite=None`, check that `NODE_ENV=production` on Render!
+
+### Alternative: Use Authorization Headers Only
+The client already sends tokens in the `Authorization` header as a fallback:
+```javascript
+config.headers.Authorization = `Bearer ${token}`;
+```
+
+The server accepts both cookies and headers, so authentication will work even if cookies are blocked. However, for best security and automatic token rotation, cookies should work properly.
+
