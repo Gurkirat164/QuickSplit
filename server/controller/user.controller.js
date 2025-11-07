@@ -295,4 +295,148 @@ const checkUserExists = asyncHandler(async (req, res) => {
     }
 });
 
-export { registerUser, loginUser, logoutUser, checkUserExists };
+const updateProfile = asyncHandler(async (req, res) => {
+    try {
+        const userId = req.user._id;
+        const { fullName, email } = req.body;
+
+        // Validate input
+        if (!fullName && !email) {
+            throw new ApiError(400, "At least one field is required to update");
+        }
+
+        // Check if email is being updated and if it already exists
+        if (email && email.toLowerCase() !== req.user.email.toLowerCase()) {
+            const existingUser = await User.findOne({ 
+                email: email.toLowerCase(),
+                _id: { $ne: userId } // Exclude current user
+            });
+
+            if (existingUser) {
+                throw new ApiError(409, "Email is already in use");
+            }
+        }
+
+        // Prepare update object
+        const updateData = {};
+        if (fullName) updateData.fullName = fullName.trim();
+        if (email) updateData.email = email.toLowerCase().trim();
+
+        // Update user
+        const updatedUser = await User.findByIdAndUpdate(
+            userId,
+            { $set: updateData },
+            { new: true, runValidators: true }
+        ).select("-password -refreshToken");
+
+        if (!updatedUser) {
+            throw new ApiError(404, "User not found");
+        }
+
+        const userResponse = {
+            _id: updatedUser._id,
+            name: updatedUser.fullName,
+            email: updatedUser.email,
+            username: updatedUser.username
+        };
+
+        return res
+            .status(200)
+            .json(
+                new ApiResponse(
+                    userResponse,
+                    200,
+                    "Profile updated successfully"
+                )
+            );
+    } catch (error) {
+        console.error("Error updating profile:", error.message);
+        return res
+            .status(error.statusCode || 500)
+            .json(
+                new ApiResponse(
+                    null,
+                    error.statusCode || 500,
+                    error.message
+                )
+            );
+    }
+});
+
+const changePassword = asyncHandler(async (req, res) => {
+    try {
+        const userId = req.user._id;
+        const { currentPassword, newPassword, confirmPassword } = req.body;
+
+        // Validate input
+        if (!currentPassword || !newPassword || !confirmPassword) {
+            throw new ApiError(400, "All password fields are required");
+        }
+
+        // Check if new passwords match
+        if (newPassword !== confirmPassword) {
+            throw new ApiError(400, "New passwords do not match");
+        }
+
+        // Check password length
+        if (newPassword.length < 6) {
+            throw new ApiError(400, "Password must be at least 6 characters long");
+        }
+
+        // Get user with password
+        const user = await User.findById(userId).select("+password");
+
+        if (!user) {
+            throw new ApiError(404, "User not found");
+        }
+
+        // Verify current password
+        const isPasswordValid = await user.comparePassword(currentPassword);
+        if (!isPasswordValid) {
+            throw new ApiError(401, "Current password is incorrect");
+        }
+
+        // Update password
+        user.password = newPassword;
+        await user.save(); // pre('save') hook will hash the password
+
+        // Clear refresh token to log out user from all devices
+        user.refreshToken = undefined;
+        await user.save({ validateBeforeSave: false });
+
+        // Clear cookies
+        const options = {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === "production",
+            sameSite: "lax",
+            maxAge: 0,
+            path: "/"
+        };
+
+        return res
+            .status(200)
+            .cookie("accessToken", "", options)
+            .cookie("refreshToken", "", options)
+            .json(
+                new ApiResponse(
+                    null,
+                    200,
+                    "Password changed successfully. Please login again."
+                )
+            );
+    } catch (error) {
+        console.error("Error changing password:", error.message);
+        return res
+            .status(error.statusCode || 500)
+            .json(
+                new ApiResponse(
+                    null,
+                    error.statusCode || 500,
+                    error.message
+                )
+            );
+    }
+});
+
+export { registerUser, loginUser, logoutUser, checkUserExists, updateProfile, changePassword };
+

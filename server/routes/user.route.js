@@ -3,7 +3,9 @@ import {
     loginUser,
     logoutUser,
     registerUser,
-    checkUserExists
+    checkUserExists,
+    updateProfile,
+    changePassword
 } from "../controller/user.controller.js";
 import { verifyJWT } from "../middleware/auth.middleware.js";
 
@@ -42,5 +44,11 @@ router.route("/me").get(verifyJWT, async (req, res) => {
         });
     }
 });
+
+// Update user profile
+router.route("/profile").put(verifyJWT, updateProfile);
+
+// Change password
+router.route("/change-password").post(verifyJWT, changePassword);
 
 export default router;
