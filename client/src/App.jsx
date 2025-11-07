@@ -13,13 +13,13 @@ import ProtectedRoute from './components/ProtectedRoute';
 // Pages
 import Login from './pages/Login';
 import Register from './pages/Register';
-import TempUserPage from './pages/TempUserPage';
 import Dashboard from './pages/Dashboard';
 import Groups from './pages/Groups';
 import GroupDetail from './pages/GroupDetail';
 import AllExpenses from './pages/AllExpenses';
 import Settings from './pages/Settings';
 import Gallery from './pages/Gallery';
+import NotFound from './pages/NotFound';
 
 // Modals
 import CreateGroupModal from './components/CreateGroupModal';
@@ -57,10 +57,10 @@ function AppContent() {
       navigate('/login', { replace: true });
     };
 
-    window.addEventListener('unauthorized', handleUnauthorized);
+    globalThis.addEventListener('unauthorized', handleUnauthorized);
 
     return () => {
-      window.removeEventListener('unauthorized', handleUnauthorized);
+      globalThis.removeEventListener('unauthorized', handleUnauthorized);
     };
   }, [dispatch, navigate]);
 
@@ -139,8 +139,8 @@ function AppContent() {
             <Route path="settings" element={<Settings />} />
           </Route>
 
-          {/* Catch all */}
-          <Route path="*" element={<Navigate to="/dashboard" replace />} />
+          {/* 404 Not Found - Catch all */}
+          <Route path="*" element={<NotFound />} />
         </Routes>
 
         {/* Modals */}
