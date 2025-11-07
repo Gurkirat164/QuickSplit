@@ -106,29 +106,6 @@ export const fetchBalances = createAsyncThunk(
   }
 );
 
-export const settleUp = createAsyncThunk(
-  'groups/settleUp',
-  async ({ groupId, from, to, amount }, { rejectWithValue, dispatch }) => {
-    try {
-      // Record the settlement
-      await groupAPI.settleExpense(groupId, {
-        from,
-        to,
-        amount
-      });
-      
-      // Refetch balances to get updated state from backend
-      await dispatch(fetchBalances(groupId));
-      
-      // Fetch updated group details
-      const groupResponse = await groupAPI.getGroupById(groupId);
-      return groupResponse.data.payload;
-    } catch (error) {
-      return rejectWithValue(error.response?.data?.message || 'Failed to settle up');
-    }
-  }
-);
-
 const groupSlice = createSlice({
   name: 'groups',
   initialState: {
@@ -231,17 +208,6 @@ const groupSlice = createSlice({
             const balance = data.balances.find(b => b.user === member._id);
             return balance ? { ...member, balance: balance.amount } : member;
           });
-        }
-      })
-      // Settle up
-      .addCase(settleUp.fulfilled, (state, action) => {
-        if (state.currentGroup) {
-          state.currentGroup = action.payload;
-        }
-        // Update the group in the groups list as well
-        const groupIndex = state.groups.findIndex(g => g._id === action.payload._id);
-        if (groupIndex !== -1) {
-          state.groups[groupIndex] = action.payload;
         }
       })
       // Handle expense creation (update group balances and totalSpent)

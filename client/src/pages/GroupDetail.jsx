@@ -60,8 +60,22 @@ const GroupDetail = () => {
   // Get user balance from currentGroup members array
   const currentUserMember = currentGroup.members?.find(m => m._id === user._id);
   const userBalance = currentUserMember?.balance || 0;
+  const isUserAdmin = currentUserMember?.role === 'admin';
+
+  const handleAddMember = () => {
+    if (!isUserAdmin) {
+      toast.error('Only group admins can add members');
+      return;
+    }
+    dispatch(openModal('addMember'));
+  };
 
   const handleDeleteGroup = async () => {
+    if (!isUserAdmin) {
+      toast.error('Only group admins can delete the group');
+      return;
+    }
+    
     if (window.confirm('Are you sure you want to delete this group?')) {
       try {
         await dispatch(deleteGroup(groupId)).unwrap();
@@ -93,7 +107,8 @@ const GroupDetail = () => {
         <div className="flex space-x-2">
           <button
             onClick={handleDeleteGroup}
-            className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+            className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            title={!isUserAdmin ? 'Only admins can delete the group' : 'Delete group'}
           >
             <Trash2 className="w-5 h-5" />
           </button>
@@ -243,8 +258,9 @@ const GroupDetail = () => {
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-xl font-bold text-gray-900">Members</h2>
               <button
-                onClick={() => dispatch(openModal('addMember'))}
-                className="flex items-center space-x-2 px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm"
+                onClick={handleAddMember}
+                className="flex items-center space-x-2 px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                title={!isUserAdmin ? 'Only admins can add members' : 'Add member'}
               >
                 <Plus className="w-4 h-4" />
                 <span>Add</span>
@@ -266,12 +282,19 @@ const GroupDetail = () => {
                       </span>
                     </div>
                     <div className="flex-1">
-                      <p className="font-medium text-gray-900">
-                        {member.name}
-                        {member._id === user._id && (
-                          <span className="font-normal ml-1">(me)</span>
+                      <div className="flex items-center gap-2">
+                        <p className="font-medium text-gray-900">
+                          {member.name}
+                          {member._id === user._id && (
+                            <span className="font-normal ml-1">(me)</span>
+                          )}
+                        </p>
+                        {member.role === 'admin' && (
+                          <span className="px-2 py-0.5 bg-blue-100 text-blue-700 text-xs font-medium rounded-full">
+                            Admin
+                          </span>
                         )}
-                      </p>
+                      </div>
                       <p className="text-sm text-gray-500">{member.email}</p>
                     </div>
                   </div>

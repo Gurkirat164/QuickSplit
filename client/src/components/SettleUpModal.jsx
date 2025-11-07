@@ -1,10 +1,10 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { X, ArrowRight, CheckCircle } from "lucide-react";
 import toast from 'react-hot-toast';
 import { closeModal } from "../store/slices/uiSlice";
-import { settleUp, fetchBalances } from "../store/slices/groupSlice";
-import { fetchExpenses } from "../store/slices/expenseSlice";
+import { fetchBalances } from "../store/slices/groupSlice";
+import { createExpense, fetchExpenses } from "../store/slices/expenseSlice";
 import { formatCurrency } from "../utils/helpers";
 
 const SettleUpModal = () => {
@@ -16,36 +16,45 @@ const SettleUpModal = () => {
     const [loading, setLoading] = useState(false);
     const [selectedSettlement, setSelectedSettlement] = useState(null);
     const [showAllSettlements, setShowAllSettlements] = useState(false);
+    const hasFetchedRef = useRef(false);
 
     // Get settlements from backend (single source of truth)
     const allSettlements = groupSettlements[currentGroup?._id] || [];
 
     // Filter settlements involving the current user
-    const userSettlements = allSettlements.filter(
-        s => s.from._id === user._id || s.to._id === user._id
-    );
+    const userSettlements = allSettlements.filter(s => {
+        const fromId = s.from?._id?.toString() || s.from?.toString();
+        const toId = s.to?._id?.toString() || s.to?.toString();
+        const currentUserId = user?._id?.toString();
+        return fromId === currentUserId || toId === currentUserId;
+    });
 
     // Use either all settlements or just user settlements based on toggle
     const settlements = showAllSettlements ? allSettlements : userSettlements;
 
-    // Prevent body scroll when modal is open
+    // Reset state when modal opens/closes
     useEffect(() => {
         if (modals.settleUp) {
             document.body.style.overflow = "hidden";
             setSelectedSettlement(null);
             setShowAllSettlements(false);
-            
-            // Fetch latest settlements from backend
-            if (currentGroup?._id) {
-                dispatch(fetchBalances(currentGroup._id));
-            }
+            hasFetchedRef.current = false; // Reset fetch flag
         } else {
             document.body.style.overflow = "unset";
+            hasFetchedRef.current = false; // Reset when modal closes
         }
         return () => {
             document.body.style.overflow = "unset";
         };
-    }, [modals.settleUp, currentGroup, dispatch]);
+    }, [modals.settleUp]);
+
+    // Fetch settlements only once when modal opens
+    useEffect(() => {
+        if (modals.settleUp && currentGroup?._id && !hasFetchedRef.current) {
+            hasFetchedRef.current = true;
+            dispatch(fetchBalances(currentGroup._id));
+        }
+    }, [modals.settleUp, currentGroup?._id, dispatch]);
 
     const handleClose = () => {
         setSelectedSettlement(null);
@@ -53,37 +62,45 @@ const SettleUpModal = () => {
     };
 
     const handleSettleUp = async (settlement) => {
+        if (!settlement) {
+            toast.error('Please select a settlement to record');
+            return;
+        }
+
         setLoading(true);
         try {
-            if (!currentGroup) {
-                throw new Error("No group selected");
+            // Create a settlement expense
+            const settlementExpense = {
+                description: `Settlement: ${settlement.from.name} pays ${settlement.to.name}`,
+                amount: settlement.amount,
+                currency: currentGroup.baseCurrency,
+                paidBy: settlement.from._id,
+                splitType: 'settlement',
+                splitBetween: [settlement.to._id],
+                category: 'Settlement',
+                isSettlement: true,
+                date: new Date().toISOString(),
+                notes: `Settlement payment from ${settlement.from.name} to ${settlement.to.name}`
+            };
+
+            // Dispatch the create expense action
+            const result = await dispatch(createExpense({ 
+                groupId: currentGroup._id, 
+                expenseData: settlementExpense 
+            })).unwrap();
+            
+            if (result) {
+                toast.success('Settlement recorded successfully! 🎉');
+                
+                // Refresh balances and expenses
+                await dispatch(fetchBalances(currentGroup._id));
+                await dispatch(fetchExpenses(currentGroup._id));
+                
+                handleClose();
             }
-
-            // Check if the current user is involved in this settlement
-            const isUserInvolved = settlement.from._id === user._id || settlement.to._id === user._id;
-            if (!isUserInvolved) {
-                toast.error('You can only record settlements that involve you');
-                setLoading(false);
-                return;
-            }
-
-            await dispatch(
-                settleUp({
-                    groupId: currentGroup._id,
-                    from: settlement.from._id,
-                    to: settlement.to._id,
-                    amount: settlement.amount
-                })
-            ).unwrap();
-
-            // Refresh expenses list to show the settlement
-            await dispatch(fetchExpenses(currentGroup._id));
-
-            toast.success('Settlement recorded successfully!');
-            handleClose();
         } catch (err) {
-            toast.error(err.message || "Failed to settle up");
-            console.error("Failed to settle up:", err);
+            toast.error(err || "Failed to record settlement");
+            console.error("Failed to record settlement:", err);
         } finally {
             setLoading(false);
         }

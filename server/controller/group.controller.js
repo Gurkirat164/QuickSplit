@@ -4,7 +4,7 @@ import { Expense } from "../models/expense.model.js";
 import { ApiError } from "../utils/ApiError.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
-import { calculateBalances, simplifyDebts } from "../utils/settlement.js";
+import { calculateSettlements } from "../utils/settlementAlgorithm.js";
 
 // Get all groups for the authenticated user
 const getGroups = asyncHandler(async (req, res) => {
@@ -382,9 +382,9 @@ const addMember = asyncHandler(async (req, res) => {
             throw new ApiError(404, "Group not found");
         }
 
-        // Check if user is a member of the group
-        if (!group.isMember(userId)) {
-            throw new ApiError(403, "Only group members can add new members");
+        // Check if user is admin of the group
+        if (!group.isAdmin(userId)) {
+            throw new ApiError(403, "Only group admins can add new members");
         }
 
         // Find the user to add
@@ -580,31 +580,78 @@ const getBalances = asyncHandler(async (req, res) => {
         }
 
         // Get all expenses for the group
-        const expenses = await Expense.find({ group: groupId });
+        const expenses = await Expense.find({ group: groupId })
+            .populate('paidBy', 'fullName email')
+            .populate('splitBetween', 'fullName email');
 
-        // Use centralized balance calculation
-        const { balanceMap, totalSpent } = calculateBalances(expenses, group.members);
-
-        // Update group member balances and totalSpent
+        // Calculate balances
+        const memberBalances = new Map();
+        let totalSpent = 0;
+        
+        // Initialize balances for all members
         group.members.forEach((member) => {
-            member.balance = balanceMap.get(member.userId._id.toString()) || 0;
+            const userId = member.userId._id.toString();
+            memberBalances.set(userId, {
+                totalPaid: 0,
+                totalOwed: 0,
+                user: {
+                    _id: userId,
+                    name: member.userId.fullName,
+                    email: member.userId.email
+                }
+            });
+        });
+
+        // Calculate totals
+        expenses.forEach((expense) => {
+            if (expense.isSettlement) {
+                // Settlement expenses: payer paid receiver
+                const payerId = expense.paidBy._id.toString();
+                const receiverId = expense.splitBetween[0]._id.toString();
+                const amount = expense.amount;
+                
+                if (memberBalances.has(payerId) && memberBalances.has(receiverId)) {
+                    memberBalances.get(payerId).totalPaid += amount;
+                    memberBalances.get(receiverId).totalOwed += amount;
+                }
+            } else {
+                // Regular expenses
+                totalSpent += expense.amount;
+                const payerId = expense.paidBy._id.toString();
+                
+                if (memberBalances.has(payerId)) {
+                    memberBalances.get(payerId).totalPaid += expense.amount;
+                }
+                
+                const splits = expense.calculateSplits();
+                splits.forEach((split) => {
+                    const userId = split.userId._id.toString();
+                    if (memberBalances.has(userId)) {
+                        memberBalances.get(userId).totalOwed += split.amount;
+                    }
+                });
+            }
+        });
+
+        // Calculate net balances
+        const balances = [];
+        group.members.forEach((member) => {
+            const userId = member.userId._id.toString();
+            const data = memberBalances.get(userId);
+            const netBalance = data.totalPaid - data.totalOwed;
+            
+            member.balance = netBalance;
+            balances.push({
+                user: data.user,
+                amount: parseFloat(netBalance.toFixed(2))
+            });
         });
         
-        // Update group's totalSpent (excluding settlements)
         group.totalSpent = totalSpent;
-
         await group.save();
 
-        // Calculate simplified settlements
-        const settlements = simplifyDebts(balanceMap, group.members);
-
-        // Format balances for response
-        const balances = group.members.map((m) => ({
-            user: m.userId._id,
-            name: m.userId.fullName,
-            email: m.userId.email,
-            amount: m.balance
-        }));
+        // Calculate settlements using the algorithm
+        const settlements = calculateSettlements(balances);
 
         return res
             .status(200)

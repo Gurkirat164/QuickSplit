@@ -1,8 +1,7 @@
 import Router from "express";
 import {
     getExpenses,
-    createExpense,
-    settleExpense
+    createExpense
 } from "../controller/expense.controller.js";
 import { verifyJWT } from "../middleware/auth.middleware.js";
 
@@ -31,8 +30,5 @@ router.use(verifyJWT);
 
 // Group-specific expense routes
 router.route("/").get(getExpenses).post(createExpense);
-
-// Settlement route
-router.route("/settle").post(settleExpense);
 
 export default router;

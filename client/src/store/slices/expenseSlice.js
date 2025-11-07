@@ -57,19 +57,6 @@ export const deleteExpense = createAsyncThunk(
   }
 );
 
-export const settleExpense = createAsyncThunk(
-  'expenses/settleExpense',
-  async ({ groupId, settlementData }, { rejectWithValue }) => {
-    try {
-      const response = await expenseAPI.settleExpense(groupId, settlementData);
-      // Backend returns: { payload: {...settlement}, statusCode, message }
-      return response.data.payload;
-    } catch (error) {
-      return rejectWithValue(error.response?.data?.message || 'Failed to settle expense');
-    }
-  }
-);
-
 const expenseSlice = createSlice({
   name: 'expenses',
   initialState: {
@@ -133,14 +120,6 @@ const expenseSlice = createSlice({
             e => e._id !== action.payload
           );
         });
-      })
-      // Settle expense
-      .addCase(settleExpense.fulfilled, (state, action) => {
-        const groupId = action.payload.group;
-        if (!state.expensesByGroup[groupId]) {
-          state.expensesByGroup[groupId] = [];
-        }
-        state.expensesByGroup[groupId].unshift(action.payload);
       });
   },
 });

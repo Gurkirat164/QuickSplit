@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
+import { useNavigate } from 'react-router-dom';
 import { X, Plus, Trash2, Mail } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { createGroup } from '../store/slices/groupSlice';
@@ -8,6 +9,7 @@ import { authAPI } from '../services/api';
 
 const CreateGroupModal = () => {
   const dispatch = useDispatch();
+  const navigate = useNavigate();
   const { modals } = useSelector((state) => state.ui);
   const { user } = useSelector((state) => state.auth);
   const [formData, setFormData] = useState({
@@ -92,7 +94,7 @@ const CreateGroupModal = () => {
     e.preventDefault();
     setLoading(true);
     try {
-      await dispatch(createGroup({
+      const result = await dispatch(createGroup({
         name: formData.name,
         description: formData.description,
         baseCurrency: formData.currency,
@@ -104,6 +106,11 @@ const CreateGroupModal = () => {
       setMembers([]);
       setNewMember('');
       dispatch(closeModal('createGroup'));
+      
+      // Navigate to the newly created group
+      if (result._id) {
+        navigate(`/groups/${result._id}`);
+      }
     } catch (error) {
       console.error('Failed to create group:', error);
       toast.error(error.message || 'Failed to create group');

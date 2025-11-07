@@ -4,7 +4,62 @@ import { User } from "../models/user.model.js";
 import { ApiError } from "../utils/ApiError.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
-import { calculateBalances, validateSettlement } from "../utils/settlement.js";
+
+/**
+ * Compute balances for all members based on expenses
+ * @param {Array} expenses - All expenses in the group
+ * @param {Array} members - Group members
+ * @returns {Object} { balanceMap, totalSpent }
+ */
+const computeBalances = (expenses, members) => {
+    const balanceMap = new Map();
+    let totalSpent = 0;
+
+    // Initialize balances for all members
+    members.forEach((member) => {
+        const userId = member.userId._id ? member.userId._id.toString() : member.userId.toString();
+        balanceMap.set(userId, 0);
+    });
+
+    // Calculate balances from expenses
+    expenses.forEach((expense) => {
+        if (expense.isSettlement) {
+            // Settlement expenses: payer paid receiver
+            const payerId = expense.paidBy._id ? expense.paidBy._id.toString() : expense.paidBy.toString();
+            const receiverId = expense.splitBetween[0]._id 
+                ? expense.splitBetween[0]._id.toString() 
+                : expense.splitBetween[0].toString();
+            const amount = expense.amount;
+
+            if (balanceMap.has(payerId)) {
+                balanceMap.set(payerId, balanceMap.get(payerId) + amount);
+            }
+            if (balanceMap.has(receiverId)) {
+                balanceMap.set(receiverId, balanceMap.get(receiverId) - amount);
+            }
+        } else {
+            // Regular expenses
+            totalSpent += expense.amount;
+            const payerId = expense.paidBy._id ? expense.paidBy._id.toString() : expense.paidBy.toString();
+
+            // Add to payer's balance (they paid)
+            if (balanceMap.has(payerId)) {
+                balanceMap.set(payerId, balanceMap.get(payerId) + expense.amount);
+            }
+
+            // Calculate splits and subtract from each person's balance (they owe)
+            const splits = expense.calculateSplits();
+            splits.forEach((split) => {
+                const userId = split.userId._id ? split.userId._id.toString() : split.userId.toString();
+                if (balanceMap.has(userId)) {
+                    balanceMap.set(userId, balanceMap.get(userId) - split.amount);
+                }
+            });
+        }
+    });
+
+    return { balanceMap, totalSpent };
+};
 
 // Get all expenses for a group
 const getExpenses = asyncHandler(async (req, res) => {
@@ -169,7 +224,8 @@ const createExpense = asyncHandler(async (req, res) => {
             splitDetails,
             category,
             date,
-            notes
+            notes,
+            isSettlement
         } = req.body;
         const userId = req.user._id;
 
@@ -241,18 +297,24 @@ const createExpense = asyncHandler(async (req, res) => {
             category: category || "Other",
             date: date || new Date(),
             notes: notes || "",
+            isSettlement: isSettlement || false,
             createdBy: userId
         });
 
         await newExpense.save();
 
-        // Recalculate balances using centralized logic
-        const allExpenses = await Expense.find({ group: groupId });
-        const { balanceMap, totalSpent } = calculateBalances(allExpenses, group.members);
+        // Recompute balances from complete expense history
+        // IMPORTANT: Never mutate historical records - always recompute
+        const allExpenses = await Expense.find({ group: groupId })
+            .populate('paidBy', 'fullName email')
+            .populate('splitBetween', 'fullName email');
+        const { balanceMap, totalSpent } = computeBalances(allExpenses, group.members);
 
-        // Update group member balances and totalSpent
+        // Update group member balances
         group.members.forEach((member) => {
-            member.balance = balanceMap.get(member.userId._id.toString()) || 0;
+            const userId = member.userId._id.toString();
+            const balance = balanceMap.get(userId);
+            member.balance = balance !== undefined ? balance : 0;
         });
         group.totalSpent = totalSpent;
         
@@ -363,8 +425,8 @@ const updateExpense = asyncHandler(async (req, res) => {
 
         await expense.save();
 
-        // Update group's total spent if amount changed
-        if (amount !== undefined && amount !== oldAmount) {
+        // Update group's total spent if amount changed (but not for settlements)
+        if (amount !== undefined && amount !== oldAmount && !expense.isSettlement) {
             const group = await Group.findById(expense.group._id);
             group.totalSpent = group.totalSpent - oldAmount + expense.amount;
             await group.save();
@@ -444,11 +506,13 @@ const deleteExpense = asyncHandler(async (req, res) => {
             );
         }
 
-        // Update group's total spent
-        const group = await Group.findById(expense.group);
-        if (group) {
-            group.totalSpent = Math.max(0, group.totalSpent - expense.amount);
-            await group.save();
+        // Update group's total spent (but not for settlements)
+        if (!expense.isSettlement) {
+            const group = await Group.findById(expense.group);
+            if (group) {
+                group.totalSpent = Math.max(0, group.totalSpent - expense.amount);
+                await group.save();
+            }
         }
 
         await Expense.findByIdAndDelete(expenseId);
@@ -470,153 +534,10 @@ const deleteExpense = asyncHandler(async (req, res) => {
     }
 });
 
-// Settle an expense (create a settlement payment)
-const settleExpense = asyncHandler(async (req, res) => {
-    try {
-        const groupId = req.params.groupId || req.groupId;
-        const { from, to, amount, currency, description } = req.body;
-        const userId = req.user._id;
-
-        console.log('\nExpense Controller - settleExpense:');
-        console.log('Full URL:', req.originalUrl);
-        console.log('Method:', req.method);
-        console.log('All Params:', JSON.stringify(req.params, null, 2));
-        console.log('GroupId from params:', req.params.groupId);
-        console.log('GroupId from req object:', req.groupId);
-        console.log('Final groupId used:', groupId);
-
-        if (!groupId || groupId === 'undefined' || groupId === ':groupId') {
-            throw new ApiError(400, "Invalid group ID provided");
-        }
-
-        // Validate required fields
-        if (!from || !to || !amount) {
-            throw new ApiError(
-                400,
-                "From, to, and amount are required for settlement"
-            );
-        }
-
-        const group = await Group.findById(groupId);
-
-        if (!group) {
-            throw new ApiError(404, "Group not found");
-        }
-
-        // Check if user is a member
-        if (!group.isMember(userId)) {
-            throw new ApiError(403, "You are not a member of this group");
-        }
-
-        // Verify both users are members
-        if (!group.isMember(from) || !group.isMember(to)) {
-            throw new ApiError(400, "Both users must be group members");
-        }
-
-        // Calculate current balances to validate settlement
-        const expenses = await Expense.find({ group: groupId });
-        const { balanceMap } = calculateBalances(expenses, group.members);
-
-        // Validate settlement
-        const validation = validateSettlement(from, to, Number.parseFloat(amount), balanceMap);
-        if (!validation.valid) {
-            throw new ApiError(400, validation.error);
-        }
-
-        // Log warning if present
-        if (validation.warning) {
-            console.warn('Settlement warning:', validation.warning);
-        }
-
-        // Get user details for description
-        const fromUser = await User.findById(from);
-        const toUser = await User.findById(to);
-
-        // Create settlement expense
-        const settlement = new Expense({
-            group: groupId,
-            description:
-                description ||
-                `Settlement: ${fromUser.fullName} paid ${toUser.fullName}`,
-            amount: Number.parseFloat(amount),
-            currency: currency || group.baseCurrency || "INR",
-            paidBy: from,
-            splitBetween: [to],
-            splitType: "settlement",
-            category: "Settlement",
-            date: new Date(),
-            isSettlement: true,
-            settled: true,
-            createdBy: userId
-        });
-
-        await settlement.save();
-
-        // Recalculate all balances using centralized logic
-        const allExpenses = await Expense.find({ group: groupId });
-        const { balanceMap: updatedBalanceMap, totalSpent } = calculateBalances(allExpenses, group.members);
-
-        // Update group member balances and totalSpent
-        group.members.forEach((member) => {
-            member.balance = updatedBalanceMap.get(member.userId._id.toString()) || 0;
-        });
-        group.totalSpent = totalSpent;
-        await group.save();
-
-        // Populate the settlement
-        await settlement.populate("paidBy", "fullName email username");
-        await settlement.populate("splitBetween", "fullName email username");
-
-        // Transform settlement to match client structure
-        const transformedSettlement = {
-            _id: settlement._id,
-            groupId: settlement.group,
-            group: settlement.group,
-            description: settlement.description,
-            amount: settlement.amount,
-            currency: settlement.currency,
-            paidBy: {
-                _id: settlement.paidBy._id,
-                name: settlement.paidBy.fullName,
-                email: settlement.paidBy.email
-            },
-            splitBetween: settlement.splitBetween.map((user) => user._id),
-            splitType: settlement.splitType,
-            category: settlement.category,
-            date: settlement.date,
-            createdAt: settlement.createdAt,
-            isSettlement: settlement.isSettlement,
-            settled: settlement.settled
-        };
-
-        return res
-            .status(201)
-            .json(
-                new ApiResponse(
-                    transformedSettlement,
-                    201,
-                    "Settlement recorded successfully"
-                )
-            );
-    } catch (error) {
-        console.error("Error in settling expense:", error.message);
-        return res
-            .status(error.statusCode || 500)
-            .json(
-                new ApiResponse(
-                    null,
-                    error.statusCode || 500,
-                    error.message || "Failed to settle expense"
-                )
-            );
-    }
-});
-
 export {
     getExpenses,
     getExpenseById,
     createExpense,
     updateExpense,
-    deleteExpense,
-    settleExpense
+    deleteExpense
 };
