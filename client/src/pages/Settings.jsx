@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { User, Lock, Save, Eye, EyeOff } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { addNotification } from '../store/slices/uiSlice';
-import { updateUser, logout } from '../store/slices/authSlice';
+import { updateUser, logoutUser } from '../store/slices/authSlice';
 import { userAPI } from '../services/api';
 
 const Settings = () => {
@@ -188,9 +188,9 @@ const Settings = () => {
         });
 
         // Wait a moment for user to see the success message
-        setTimeout(() => {
+        setTimeout(async () => {
           // Logout and redirect to login
-          dispatch(logout());
+          await dispatch(logoutUser());
           navigate('/login');
         }, 1500);
       }

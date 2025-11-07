@@ -10,23 +10,41 @@ export const uploadImage = asyncHandler(async (req, res) => {
     try {
         const { groupId } = req.body;
 
+        console.log("Upload request received:", {
+            hasFile: !!req.file,
+            groupId,
+            userId: req.user?._id
+        });
+
         if (!req.file) {
+            console.error("Upload failed: No file provided");
             throw new ApiError(400, "No image file provided");
         }
 
         if (!groupId) {
+            console.error("Upload failed: No group ID provided");
             throw new ApiError(400, "Group ID is required");
         }
 
         // Verify user is a member of the group
         const group = await Group.findById(groupId);
         if (!group) {
+            console.error("Upload failed: Group not found:", groupId);
             throw new ApiError(404, "Group not found");
         }
 
         if (!group.isMember(req.user._id)) {
+            console.error("Upload failed: User not a member:", {
+                userId: req.user._id,
+                groupId
+            });
             throw new ApiError(403, "You are not a member of this group");
         }
+
+        console.log("Cloudinary upload successful:", {
+            url: req.file.path,
+            publicId: req.file.filename
+        });
 
         // req.file.path contains the Cloudinary URL
         // req.file.filename contains the public_id
@@ -56,6 +74,8 @@ export const uploadImage = asyncHandler(async (req, res) => {
             createdAt: newImage.createdAt
         };
 
+        console.log("Image saved to database successfully:", newImage._id);
+
         return res
             .status(201)
             .json(
@@ -66,7 +86,11 @@ export const uploadImage = asyncHandler(async (req, res) => {
                 )
             );
     } catch (error) {
-        console.error("Error in uploadImage:", error.message);
+        console.error("Error in uploadImage:", {
+            message: error.message,
+            statusCode: error.statusCode,
+            stack: process.env.NODE_ENV === "development" ? error.stack : undefined
+        });
         return res
             .status(error.statusCode || 500)
             .json(

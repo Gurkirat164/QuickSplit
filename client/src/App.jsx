@@ -1,8 +1,8 @@
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import { useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { Toaster } from 'react-hot-toast';
-import { fetchCurrentUser } from './store/slices/authSlice';
+import { fetchCurrentUser, logout } from './store/slices/authSlice';
 import { fetchGroups } from './store/slices/groupSlice';
 import useSocket from './hooks/useSocket';
 
@@ -29,8 +29,9 @@ import SettleUpModal from './components/SettleUpModal';
 
 import './index.css';
 
-function App() {
+function AppContent() {
   const dispatch = useDispatch();
+  const navigate = useNavigate();
   const { token, isAuthenticated } = useSelector((state) => state.auth);
 
   // Initialize Socket.IO connection
@@ -49,11 +50,24 @@ function App() {
     }
   }, [dispatch, isAuthenticated]);
 
+  // Listen for unauthorized events from API interceptor
+  useEffect(() => {
+    const handleUnauthorized = () => {
+      dispatch(logout());
+      navigate('/login', { replace: true });
+    };
+
+    window.addEventListener('unauthorized', handleUnauthorized);
+
+    return () => {
+      window.removeEventListener('unauthorized', handleUnauthorized);
+    };
+  }, [dispatch, navigate]);
+
   return (
-    <Router>
-      <div className="App">
-        {/* Toast Notifications */}
-        <Toaster
+    <div className="App">
+      {/* Toast Notifications */}
+      <Toaster
           position="top-right"
           reverseOrder={false}
           gutter={12}
@@ -135,6 +149,13 @@ function App() {
         <AddMemberModal />
         <SettleUpModal />
       </div>
+  );
+}
+
+function App() {
+  return (
+    <Router>
+      <AppContent />
     </Router>
   );
 }

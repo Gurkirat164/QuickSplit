@@ -33,7 +33,9 @@ api.interceptors.response.use(
       const currentPath = window.location.pathname;
       if (currentPath !== '/login' && currentPath !== '/register') {
         localStorage.removeItem('token');
-        window.location.href = '/login';
+        // Dispatch custom event instead of using window.location.href
+        // This prevents white screen and allows React Router to handle navigation
+        window.dispatchEvent(new CustomEvent('unauthorized'));
       }
     }
     return Promise.reject(error);

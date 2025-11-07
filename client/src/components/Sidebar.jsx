@@ -1,17 +1,19 @@
 import { useSelector, useDispatch } from 'react-redux';
-import { NavLink } from 'react-router-dom';
+import { NavLink, useNavigate } from 'react-router-dom';
 import { Home, Users, Receipt, Settings, LogOut, ChevronLeft, Plus, Image } from 'lucide-react';
-import { logout } from '../store/slices/authSlice';
+import { logoutUser } from '../store/slices/authSlice';
 import { toggleSidebar, openModal } from '../store/slices/uiSlice';
 
 const Sidebar = () => {
   const dispatch = useDispatch();
+  const navigate = useNavigate();
   const { sidebarOpen } = useSelector((state) => state.ui);
   const { user } = useSelector((state) => state.auth);
   const { groups } = useSelector((state) => state.groups);
 
-  const handleLogout = () => {
-    dispatch(logout());
+  const handleLogout = async () => {
+    await dispatch(logoutUser());
+    navigate('/login');
   };
 
   const navLinks = [
