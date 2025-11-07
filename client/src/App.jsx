@@ -19,6 +19,7 @@ import Groups from './pages/Groups';
 import GroupDetail from './pages/GroupDetail';
 import AllExpenses from './pages/AllExpenses';
 import Settings from './pages/Settings';
+import Gallery from './pages/Gallery';
 
 // Modals
 import CreateGroupModal from './components/CreateGroupModal';
@@ -120,6 +121,7 @@ function App() {
             <Route path="groups" element={<Groups />} />
             <Route path="groups/:groupId" element={<GroupDetail />} />
             <Route path="expenses" element={<AllExpenses />} />
+            <Route path="gallery/:groupId" element={<Gallery />} />
             <Route path="settings" element={<Settings />} />
           </Route>
 

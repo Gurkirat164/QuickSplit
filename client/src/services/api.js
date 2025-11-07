@@ -92,4 +92,29 @@ export const chatAPI = {
   getUnreadCount: (roomId) => api.get(`/chat/${roomId}/unread`),
 };
 
+// Gallery API
+export const galleryAPI = {
+  uploadImage: (imageFile, groupId, onProgress) => {
+    const formData = new FormData();
+    formData.append('image', imageFile);
+    formData.append('groupId', groupId);
+    
+    return api.post('/gallery/upload', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+      onUploadProgress: (progressEvent) => {
+        const percentCompleted = Math.round(
+          (progressEvent.loaded * 100) / progressEvent.total
+        );
+        if (onProgress) {
+          onProgress(percentCompleted);
+        }
+      },
+    });
+  },
+  getGallery: (groupId) => api.get(`/gallery/${groupId}`),
+  deleteImage: (imageId) => api.delete(`/gallery/image/${imageId}`),
+};
+
 export default api;

@@ -1,13 +1,18 @@
 import { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Users, Receipt, TrendingUp, Plus, ArrowLeft, Settings, Trash2, MessageSquare, UtensilsCrossed, Car, Film, ShoppingBag, Home, Zap, Heart, Plane, GraduationCap, Dumbbell, ArrowRightLeft, MoreHorizontal } from 'lucide-react';
+import { Users, Receipt, TrendingUp, Plus, ArrowLeft, Settings, Trash2, MessageSquare, UtensilsCrossed, Car, Film, ShoppingBag, Home, Zap, Heart, Plane, GraduationCap, Dumbbell, ArrowRightLeft, MoreHorizontal, Image } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { fetchGroupDetails, fetchBalances, deleteGroup, clearCurrentGroup } from '../store/slices/groupSlice';
 import { fetchExpenses, setSelectedExpense } from '../store/slices/expenseSlice';
 import { openModal } from '../store/slices/uiSlice';
 import { formatCurrency, formatDate, getRelativeTime } from '../utils/helpers';
 import ChatRoom from '../components/ChatRoom';
+import UploadButton from '../components/UploadButton';
+import ProgressBar from '../components/ProgressBar';
+import FilterByTimestamp from '../components/FilterByTimestamp';
+import GalleryGrid from '../components/GalleryGrid';
+import { fetchGallery } from '../store/slices/gallerySlice';
 
 // Category icon mapping
 const categoryIcons = {
@@ -29,10 +34,11 @@ const GroupDetail = () => {
   const { groupId } = useParams();
   const navigate = useNavigate();
   const dispatch = useDispatch();
-  const [activeTab, setActiveTab] = useState('expenses'); // 'expenses' or 'chat'
+  const [activeTab, setActiveTab] = useState('expenses'); // 'expenses', 'chat', or 'gallery'
   
   const { currentGroup, balances, settlements: groupSettlements, loading } = useSelector((state) => state.groups);
   const { expensesByGroup } = useSelector((state) => state.expenses);
+  const { images: galleryImages } = useSelector((state) => state.gallery);
   const { user } = useSelector((state) => state.auth);
 
   useEffect(() => {
@@ -48,6 +54,9 @@ const GroupDetail = () => {
           });
           dispatch(fetchExpenses(groupId)).catch(err => {
             console.error('Failed to fetch expenses:', err);
+          });
+          dispatch(fetchGallery(groupId)).catch(err => {
+            console.error('Failed to fetch gallery:', err);
           });
         })
         .catch(err => {
@@ -213,6 +222,19 @@ const GroupDetail = () => {
                 <span>Chat</span>
               </div>
             </button>
+            <button
+              onClick={() => setActiveTab('gallery')}
+              className={`flex-1 px-6 py-4 text-sm font-medium transition-colors ${
+                activeTab === 'gallery'
+                  ? 'text-blue-600 border-b-2 border-blue-600 bg-blue-50'
+                  : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+              }`}
+            >
+              <div className="flex items-center justify-center space-x-2">
+                <Image className="w-4 h-4" />
+                <span>Gallery</span>
+              </div>
+            </button>
           </div>
 
           {/* Tab Content */}
@@ -271,9 +293,31 @@ const GroupDetail = () => {
                 </div>
               )}
             </div>
-          ) : (
+          ) : activeTab === 'chat' ? (
             <div className="h-[600px]">
               <ChatRoom />
+            </div>
+          ) : (
+            <div className="p-6 space-y-4">
+              <div className="flex items-center justify-between">
+                <h2 className="text-xl font-bold text-gray-900">
+                  Gallery ({galleryImages?.length || 0})
+                </h2>
+                <UploadButton groupId={groupId} />
+              </div>
+              <ProgressBar />
+              <FilterByTimestamp />
+              {galleryImages?.length === 0 ? (
+                <div className="text-center py-12">
+                  <Image className="w-12 h-12 text-gray-400 mx-auto mb-3" />
+                  <p className="text-gray-500">No images yet</p>
+                  <p className="text-sm text-gray-400 mt-2">Upload images to share with group members</p>
+                </div>
+              ) : (
+                <div className="max-h-96 overflow-y-auto">
+                  <GalleryGrid />
+                </div>
+              )}
             </div>
           )}
         </div>

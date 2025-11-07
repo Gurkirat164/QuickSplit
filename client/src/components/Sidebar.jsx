@@ -1,6 +1,6 @@
 import { useSelector, useDispatch } from 'react-redux';
 import { NavLink } from 'react-router-dom';
-import { Home, Users, Receipt, Settings, LogOut, ChevronLeft, Plus } from 'lucide-react';
+import { Home, Users, Receipt, Settings, LogOut, ChevronLeft, Plus, Image } from 'lucide-react';
 import { logout } from '../store/slices/authSlice';
 import { toggleSidebar, openModal } from '../store/slices/uiSlice';
 

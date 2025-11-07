@@ -4,6 +4,7 @@ import groupReducer from './slices/groupSlice';
 import expenseReducer from './slices/expenseSlice';
 import uiReducer from './slices/uiSlice';
 import chatReducer from './slices/chatSlice';
+import galleryReducer from './slices/gallerySlice';
 
 export const store = configureStore({
   reducer: {
@@ -12,6 +13,7 @@ export const store = configureStore({
     expenses: expenseReducer,
     ui: uiReducer,
     chat: chatReducer,
+    gallery: galleryReducer,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({
