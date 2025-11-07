@@ -10,7 +10,14 @@ export const uploadImage = createAsyncThunk(
       const response = await galleryAPI.uploadImage(imageFile, groupId, onProgress);
       return response.data.payload;
     } catch (error) {
-      const message = error.response?.data?.message || 'Failed to upload image';
+      console.error("Upload error details:", {
+        status: error.response?.status,
+        statusText: error.response?.statusText,
+        message: error.response?.data?.message,
+        fullError: error
+      });
+      
+      const message = error.response?.data?.message || error.message || 'Failed to upload image';
       return rejectWithValue(message);
     }
   }

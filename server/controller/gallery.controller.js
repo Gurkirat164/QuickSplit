@@ -8,6 +8,19 @@ import { asyncHandler } from "../utils/asyncHandler.js";
 // Upload image to Cloudinary and save to database
 export const uploadImage = asyncHandler(async (req, res) => {
     try {
+        console.log("=== UPLOAD IMAGE REQUEST START ===");
+        console.log("Request body:", req.body);
+        console.log("Request file:", req.file ? {
+            fieldname: req.file.fieldname,
+            originalname: req.file.originalname,
+            encoding: req.file.encoding,
+            mimetype: req.file.mimetype,
+            size: req.file.size,
+            path: req.file.path ? "✅ Has path" : "❌ No path",
+            filename: req.file.filename ? "✅ Has filename" : "❌ No filename"
+        } : "❌ NO FILE");
+        console.log("User:", req.user ? { id: req.user._id, email: req.user.email } : "❌ NO USER");
+        
         const { groupId } = req.body;
 
         console.log("Upload request received:", {
@@ -26,12 +39,20 @@ export const uploadImage = asyncHandler(async (req, res) => {
             throw new ApiError(400, "Group ID is required");
         }
 
+        console.log("Fetching group:", groupId);
+        
         // Verify user is a member of the group
         const group = await Group.findById(groupId);
         if (!group) {
             console.error("Upload failed: Group not found:", groupId);
             throw new ApiError(404, "Group not found");
         }
+
+        console.log("Group found:", {
+            id: group._id,
+            name: group.name,
+            members: group.members.length
+        });
 
         if (!group.isMember(req.user._id)) {
             console.error("Upload failed: User not a member:", {
@@ -41,6 +62,7 @@ export const uploadImage = asyncHandler(async (req, res) => {
             throw new ApiError(403, "You are not a member of this group");
         }
 
+        console.log("User is a member. Creating gallery entry...");
         console.log("Cloudinary upload successful:", {
             url: req.file.path,
             publicId: req.file.filename
@@ -55,9 +77,12 @@ export const uploadImage = asyncHandler(async (req, res) => {
             uploadedBy: req.user._id
         });
 
+        console.log("Saving to database...");
         await newImage.save();
+        console.log("Saved successfully!");
 
         // Populate user details
+        console.log("Populating user details...");
         await newImage.populate("uploadedBy", "fullName email username");
 
         const imageResponse = {
@@ -75,6 +100,7 @@ export const uploadImage = asyncHandler(async (req, res) => {
         };
 
         console.log("Image saved to database successfully:", newImage._id);
+        console.log("=== UPLOAD IMAGE REQUEST END (SUCCESS) ===");
 
         return res
             .status(201)
@@ -86,9 +112,11 @@ export const uploadImage = asyncHandler(async (req, res) => {
                 )
             );
     } catch (error) {
+        console.error("=== UPLOAD IMAGE REQUEST END (ERROR) ===");
         console.error("Error in uploadImage:", {
             message: error.message,
             statusCode: error.statusCode,
+            name: error.name,
             stack: process.env.NODE_ENV === "development" ? error.stack : undefined
         });
         return res
